@@ -1,0 +1,113 @@
+import React, { useState } from 'react';
+import { Card, Nav, Form, Button, InputGroup } from 'react-bootstrap';
+import { toast } from 'react-toastify';
+
+const UserLogin = ({ onLogin }) => {
+    const [activeTab, setActiveTab] = useState('signup');
+    const [loginUsername, setLoginUsername] = useState('');
+    const [loginPassword, setLoginPassword] = useState('');
+    const [signupUsername, setSignupUsername] = useState('');
+    const [signupPassword, setSignupPassword] = useState('');
+
+    const generateUserPassword = () => {
+        const password = Math.random().toString(36).slice(-8);
+        setSignupPassword(password);
+    };
+
+    const handleLogin = (e) => {
+        e.preventDefault();
+        if (!loginUsername || !loginPassword) {
+            toast.warn("Please enter both username and password.");
+            return;
+        }
+        const quizUsers = JSON.parse(localStorage.getItem("quizUsers")) || [];
+        const foundUser = quizUsers.find(user => user.username.toLowerCase() === loginUsername.toLowerCase() && user.password === loginPassword);
+
+        if (!foundUser) {
+            toast.error("Invalid username or password. Please contact an admin for credentials.");
+            return;
+        }
+        onLogin({ userId: foundUser.userId, username: foundUser.username });
+    };
+
+    const handleRegister = (e) => {
+        e.preventDefault();
+        if (!signupUsername || !signupPassword) {
+            toast.warn("Please enter a username and generate a password.");
+            return;
+        }
+
+        const userId = `user_${Date.now()}`;
+        let quizUsers = JSON.parse(localStorage.getItem("quizUsers")) || [];
+
+        if (quizUsers.some(user => user.username.toLowerCase() === signupUsername.toLowerCase())) {
+            toast.error("Username already exists. Please choose a different one.");
+            return;
+        }
+
+        quizUsers.push({ userId, username: signupUsername, password: signupPassword });
+        localStorage.setItem("quizUsers", JSON.stringify(quizUsers));
+
+        toast.success(`User '${signupUsername}' created successfully! Logging you in...`);
+        onLogin({ userId, username: signupUsername });
+    };
+
+    return (
+        <div className="d-flex justify-content-center align-items-center px-3" style={{ minHeight: '70vh' }}>
+            <Card className="shadow-lg" style={{ maxWidth: '400px', width: '100%' }}>
+                <Card.Header>
+                    <Nav variant="tabs" activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
+                        <Nav.Item>
+                            <Nav.Link eventKey="login">Login</Nav.Link>
+                        </Nav.Item>
+                        <Nav.Item>
+                            <Nav.Link eventKey="signup">Sign Up</Nav.Link>
+                        </Nav.Item>
+                    </Nav>
+                </Card.Header>
+                <Card.Body className="p-4">
+                    {activeTab === 'login' && (
+                        <Form onSubmit={handleLogin}>
+                            <h5 className="card-title text-center mb-3">Welcome Back!</h5>
+                            <Form.Group className="mb-3" controlId="username">
+                                <Form.Label>Username</Form.Label>
+                                <InputGroup>
+                                    <InputGroup.Text>👤</InputGroup.Text>
+                                    <Form.Control type="text" placeholder="Enter username" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} />
+                                </InputGroup>
+                            </Form.Group>
+                            <Form.Group className="mb-3" controlId="password">
+                                <Form.Label>Password</Form.Label>
+                                <InputGroup>
+                                    <InputGroup.Text>🔑</InputGroup.Text>
+                                    <Form.Control type="password" placeholder="Enter password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
+                                </InputGroup>
+                            </Form.Group>
+                            <Button type="submit" variant="primary" className="w-100 rounded-pill mt-2">Login</Button>
+                        </Form>
+                    )}
+
+                    {activeTab === 'signup' && (
+                        <Form onSubmit={handleRegister}>
+                            <h5 className="card-title text-center mb-3">Create Your Account</h5>
+                            <Form.Group className="mb-3" controlId="signupUsername">
+                                <Form.Label>Choose a Username</Form.Label>
+                                <Form.Control type="text" placeholder="e.g., David123" value={signupUsername} onChange={(e) => setSignupUsername(e.target.value)} />
+                            </Form.Group>
+                            <Form.Group className="mb-3" controlId="signupPassword">
+                                <Form.Label>Generated Password</Form.Label>
+                                <InputGroup>
+                                    <Form.Control type="text" placeholder="Click 'Generate'" readOnly value={signupPassword} />
+                                    <Button variant="secondary" onClick={generateUserPassword}>Generate</Button>
+                                </InputGroup>
+                            </Form.Group>
+                            <Button type="submit" variant="success" className="w-100 rounded-pill mt-2">Sign Up &amp; Login</Button>
+                        </Form>
+                    )}
+                </Card.Body>
+            </Card>
+        </div>
+    );
+};
+
+export default UserLogin;
