@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Form, Button, Container, Row, Col, Alert } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 import AlertToast from './AlertToast';
 
 const AdminLogin = ({ onLogin }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [alertInfo, setAlertInfo] = useState({ show: false, message: '', variant: '' });
+    const navigate = useNavigate();
 
     useEffect(() => {
         // Seed the first main admin if no admins exist
@@ -32,6 +34,7 @@ const AdminLogin = ({ onLogin }) => {
         if (foundAdmin) {
             // Pass the entire admin object on login
             onLogin(foundAdmin);
+            navigate('/admin/dashboard'); // Redirect after successful login
         } else {
             setAlertInfo({ show: true, message: 'Invalid credentials. Please try again.', variant: 'danger' });
         }

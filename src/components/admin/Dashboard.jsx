@@ -21,8 +21,12 @@ const Dashboard = () => {
             const allScores = totalUsers.map(user => {
                 const history = JSON.parse(localStorage.getItem(`quizHistory_${user.userId}`)) || [];
                 if (history.length === 0) return null;
-                const bestScore = Math.max(...history.map(h => h.score));
-                return { username: user.username, score: bestScore };
+                // Ensure we only consider entries with a valid score
+                const scores = history.map(h => h.score).filter(s => typeof s === 'number');
+                if (scores.length === 0) return null;
+
+                const bestScore = Math.max(...scores);
+                return { username: user.username, score: bestScore, userId: user.userId };
             }).filter(Boolean);
 
             const topRanker = allScores.length > 0
@@ -42,7 +46,7 @@ const Dashboard = () => {
         };
     }, []);
 
-    const userQuizLink = `${window.location.origin}/user/`;
+    const userQuizLink = `${window.location.origin}/user/login`;
 
     const handleCopyLink = () => {
         navigator.clipboard.writeText(userQuizLink).then(() => {
@@ -58,10 +62,10 @@ const Dashboard = () => {
             {stats.publishedQuestions.length > 0 ? (
                 <Row className="mb-4">
                     <Col>
-                        <Card className="shadow-sm bg-light border-primary">
+                        <Card className="shadow-sm bg-body-tertiary border-primary">
                             <Card.Header as="h5" className="bg-primary text-white"><i className="bi bi-link-45deg me-2"></i>User Quiz Link</Card.Header>
                             <Card.Body>
-                                <p>Share this permanent link with users to access the quiz. It is now active because you have published questions.</p>
+                                <p>Share this permanent link with users to log in and access the quiz. It is now active because you have published questions.</p>
                                 <InputGroup>
                                     <Form.Control readOnly value={userQuizLink} />
                                     <Button variant="outline-primary" onClick={handleCopyLink}><i className="bi bi-clipboard-check-fill me-1"></i> Copy Link</Button>
@@ -73,10 +77,10 @@ const Dashboard = () => {
             ) : (
                 <Row className="mb-4">
                     <Col>
-                        <Card className="shadow-sm bg-light">
+                        <Card className="shadow-sm bg-body-tertiary">
                             <Card.Header as="h5" className="text-muted"><i className="bi bi-link-45deg me-2"></i>User Quiz Link</Card.Header>
                             <Card.Body>
-                                <p className="text-muted">The permanent link for users to take the quiz will be available here once you publish your first question.</p>
+                                <p className="text-muted ">The permanent link for users to take the quiz will be available here once you publish your first question.</p>
                                 <p className="text-muted mb-0">Go to the <Link to="/admin/publish">Publish Queue</Link> to get started.</p>
                             </Card.Body>
                         </Card>
@@ -85,7 +89,7 @@ const Dashboard = () => {
             )}
 
             <Row>
-                <Col md={4}>
+                <Col md={4} className="mb-3 mb-md-0">
                     <Card className="text-center shadow-sm h-100">
                         <Card.Body>
                             <Card.Title><i className="bi bi-person-check-fill me-2"></i>Active Users</Card.Title>
@@ -93,7 +97,7 @@ const Dashboard = () => {
                         </Card.Body>
                     </Card>
                 </Col>
-                <Col md={4}>
+                <Col md={4} className="mb-3 mb-md-0">
                     <Card className="text-center shadow-sm mb-3">
                         <Card.Body>
                             <Card.Title>Total Registered Users</Card.Title>
@@ -101,7 +105,7 @@ const Dashboard = () => {
                         </Card.Body>
                     </Card>
                 </Col>
-                <Col md={4}>
+                <Col md={4} className="mb-3 mb-md-0">
                     <Card className="text-center shadow-sm h-100">
                         <Card.Body>
                             <Card.Title><i className="bi bi-patch-question-fill me-2"></i>Published Questions</Card.Title>
@@ -111,7 +115,7 @@ const Dashboard = () => {
                 </Col>
             </Row>
             <Row className="mt-4">
-                <Col md={8}>
+                {/* <Col md={8}>
                     <Card className="shadow-sm">
                         <Card.Header as="h5">Active User List</Card.Header>
                         <ListGroup variant="flush" style={{ maxHeight: '300px', overflowY: 'auto' }}>
@@ -122,8 +126,8 @@ const Dashboard = () => {
                             )}
                         </ListGroup>
                     </Card>
-                </Col>
-                <Col md={4}>
+                </Col> */}
+                {/* <Col md={4}>
                     <Card className="text-center shadow-sm h-100">
                         <Card.Header as="h5"><i className="bi bi-trophy-fill me-2"></i>Leaderboard</Card.Header>
                         <Card.Body className="d-flex flex-column justify-content-center">
@@ -135,7 +139,7 @@ const Dashboard = () => {
                             ) : <p className="text-muted">No scores recorded yet.</p>}
                         </Card.Body>
                     </Card>
-                </Col>
+                </Col> */}
             </Row>
         </div>
     );

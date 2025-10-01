@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Table, Button, Card, Form, Row, Col } from 'react-bootstrap';
 import { toast } from 'react-toastify';
-
+import Dashboard  from './Dashboard';
 const getAdmins = () => JSON.parse(localStorage.getItem("quizAdmins")) || [];
 const saveAdmins = (admins) => localStorage.setItem("quizAdmins", JSON.stringify(admins));
 

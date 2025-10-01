@@ -50,9 +50,9 @@ const QuestionHistory = () => {
     return (
         <>
             <Card className="shadow-sm">
-                <Card.Header as="h5" className="d-flex justify-content-between align-items-center">
-                    Question History ({publishedQuestions.length})
-                    <div>
+                <Card.Header as="h5" className="d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+                    <span className="mb-2 mb-md-0">Question History ({publishedQuestions.length})</span>
+                    <div className="d-flex">
                         <Button variant="success" size="sm" onClick={handleDownloadPDF} disabled={publishedQuestions.length === 0} className="me-2">
                             <i className="bi bi-file-earmark-pdf-fill me-1"></i> Download as PDF
                         </Button>

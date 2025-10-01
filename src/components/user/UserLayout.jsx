@@ -1,125 +1,128 @@
-import React, { useState, useEffect } from 'react';
-import { Routes, Route, Link, useNavigate, Navigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Navbar, Nav, Container, Button, Modal, Badge, Form } from 'react-bootstrap';
 import { ToastContainer } from 'react-toastify';
-import { Navbar, Nav, Container, Button, Form } from 'react-bootstrap';
-import UserLogin from './UserLogin';
-import Home from './Home';
-import Quiz from './Quiz';
-import MyScore from './MyScore';
-import PerformanceHistory from './PerformanceHistory';
 import { useTheme } from '../../hooks/useTheme';
 
-// Custom hook for managing user authentication
-const useUserAuth = () => {
-    const [currentUser, setCurrentUser] = useState(() => {
-        const savedUser = localStorage.getItem("currentUser");
-        return savedUser ? JSON.parse(savedUser) : null;
-    });
+const UserLayout = ({ currentUser, onLogout }) => {
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const [newNoticesCount, setNewNoticesCount] = useState(0);
+    const [isBellRinging, setIsBellRinging] = useState(false);
+    const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
 
-    const login = (user) => {
-        setCurrentUser(user);
-        localStorage.setItem("currentUser", JSON.stringify(user));
-        
-        // Add to active users list for admin panel simulation
-        let activeUsers = JSON.parse(localStorage.getItem("activeUsers")) || [];
-        if (!activeUsers.some(u => u.userId === user.userId)) {
-            activeUsers.push({ userId: user.userId, username: user.username });
-            localStorage.setItem("activeUsers", JSON.stringify(activeUsers));
-            window.dispatchEvent(new Event('storageUpdated')); // Notify dashboard
-        }
-        
-        // After login, go to the page they were trying to access, or the user home.
-        const from = location.state?.from?.pathname || '/user/home';
-        navigate(from, { replace: true });
-    };
+    const checkForNewNotices = useCallback(() => {
+        const allNotices = JSON.parse(localStorage.getItem("quizNotices")) || [];
+        const userSeenNotices = JSON.parse(localStorage.getItem(`seenNotices_${currentUser.userId}`)) || [];
 
-    const logout = () => {
-        // Remove from active users list
-        if (currentUser) {
-            let activeUsers = JSON.parse(localStorage.getItem("activeUsers")) || [];
-            activeUsers = activeUsers.filter(user => user.userId !== currentUser.userId);
-            localStorage.setItem("activeUsers", JSON.stringify(activeUsers));
-            window.dispatchEvent(new Event('storageUpdated')); // Notify dashboard
-        }
+        const newNotices = allNotices.filter(notice =>
+            (notice.recipient === 'global' || notice.recipient === currentUser.userId) &&
+            !userSeenNotices.includes(notice.id)
+        );
 
-        setCurrentUser(null);
-        localStorage.removeItem("currentUser");
-        navigate('/user/login');
-    };
+        if (newNotices.length > newNoticesCount) {
+            setIsBellRinging(true);
+            setTimeout(() => setIsBellRinging(false), 1000); // Animation duration
+        }
+        setNewNoticesCount(newNotices.length);
+    }, [currentUser.userId, newNoticesCount]);
 
     useEffect(() => {
-        // If user is not logged in and not on the login page, redirect them.
-        if (!currentUser && location.pathname !== '/user/login') {
-            navigate('/user/login', { state: { from: location }, replace: true });
+        checkForNewNotices();
+        const interval = setInterval(checkForNewNotices, 5000); // Check every 5 seconds
+        return () => clearInterval(interval);
+    }, [checkForNewNotices]);
+
+    const handleLogout = () => {
+        onLogout();
+    };
+
+    const handleBellClick = () => {
+        const allNotices = JSON.parse(localStorage.getItem("quizNotices")) || [];
+        const relevantNoticeIds = allNotices
+            .filter(notice => notice.recipient === 'global' || notice.recipient === currentUser.userId)
+            .map(notice => notice.id);
+        
+        localStorage.setItem(`seenNotices_${currentUser.userId}`, JSON.stringify(relevantNoticeIds));
+        setNewNoticesCount(0);
+        
+        // If not already on the dashboard, navigate there
+        if (location.pathname !== '/user/dashboard') {
+            navigate('/user/dashboard');
         }
-    }, [currentUser, navigate, location]);
+    };
 
-    return { currentUser, login, logout };
-};
-
-const UserLayout = () => {
-    const { currentUser, login, logout } = useUserAuth();
-    const { theme, toggleTheme } = useTheme();
-
-    // If no user is logged in, only render the login route.
-    if (!currentUser) {
-        return (
-            <>
-                <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
-                <Routes>
-                    <Route path="login" element={<UserLogin onLogin={login} />} />
-                    {/* Redirect any other user path to login if not authenticated */}
-                    <Route path="*" element={<Navigate to="/user/login" replace />} />
-                </Routes>
-            </>
-        );
-    }
-
-    // If user is logged in, render the full application layout.
     return (
-        <>
-            <Navbar bg="primary" variant="dark" expand="lg" className="sticky-top shadow">
-                <Container fluid>
-                    <Navbar.Brand as={Link} to="/user/home">Quiz App</Navbar.Brand>
-                    <Navbar.Toggle aria-controls="userNavbar" />
-                    <Navbar.Collapse id="userNavbar">
+        <div className="d-flex flex-column min-vh-100">
+            <Navbar bg="primary" variant="dark" expand="lg" className="shadow-sm">
+                <Container>
+                    <Navbar.Brand as={Link} to="/user/home">Quiz Platform</Navbar.Brand>
+                    <Navbar.Toggle aria-controls="basic-navbar-nav" />
+                    <Navbar.Collapse id="basic-navbar-nav">
                         <Nav className="me-auto">
-                            <Nav.Link as={Link} to="quiz">Take Quiz</Nav.Link>
-                            <Nav.Link as={Link} to="score">My Score</Nav.Link>
-                            <Nav.Link as={Link} to="performance"><i className="bi bi-eye-fill me-1"></i>Performance</Nav.Link>
+                            <Nav.Link as={Link} to="/user/home" active={location.pathname === '/user/home'}>Home</Nav.Link>
+                            <Nav.Link as={Link} to="/user/dashboard" active={location.pathname === '/user/dashboard'}>Dashboard & Notices</Nav.Link>
+                            <Nav.Link as={Link} to="/user/quiz" active={location.pathname.startsWith('/user/quiz')}>Take Quiz</Nav.Link>
+                            <Nav.Link as={Link} to="/user/score" active={location.pathname.startsWith('/user/score')}>Performance</Nav.Link>
                         </Nav>
-                        <div className="d-flex align-items-center">
-                            <Navbar.Text className="me-3">
-                                Signed in as: <strong>{currentUser.username}</strong>
-                            </Navbar.Text>
+                        <Nav className="ms-auto align-items-center">
+                            <Nav.Link onClick={handleBellClick} className="position-relative me-lg-2" title="View Notices">
+                                <i className={`bi bi-bell-fill fs-5 ${isBellRinging ? 'ring' : ''}`}></i>
+                                {newNoticesCount > 0 && (
+                                    <Badge pill bg="danger" className="position-absolute top-0 start-100 translate-middle border border-light" style={{ fontSize: '0.6em' }}>
+                                        {newNoticesCount > 9 ? '9+' : newNoticesCount}
+                                    </Badge>
+                                )}
+                            </Nav.Link>
                             <Form.Check
                                 type="switch"
                                 id="theme-switch-user"
-                                label={theme === 'light' ? <i className="bi bi-brightness-high-fill"></i> : <i className="bi bi-moon-stars-fill"></i>}
+                                label={theme === 'light' ? <i className="bi bi-brightness-high-fill text-white fs-5"></i> : <i className="bi bi-moon-stars-fill text-white fs-5"></i>}
                                 checked={theme === 'dark'}
                                 onChange={toggleTheme}
-                                className="text-white me-3"
+                                className="d-flex align-items-center my-2 my-lg-0 mx-lg-3"
+                                title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
                             />
-                            <Button variant="outline-light" size="sm" onClick={logout}>
-                                <i className="bi bi-box-arrow-right me-1"></i>Logout
+                            <Navbar.Text className="my-2 my-lg-0">
+                                <i className="bi bi-person-circle me-1"></i>
+                                <span className="fw-bold">{currentUser.username}</span>
+                            </Navbar.Text>
+                            <Button variant="outline-light" onClick={() => setShowLogoutModal(true)} className="ms-lg-3 mt-2 mt-lg-0">
+                                <i className="bi bi-box-arrow-right me-1"></i> Logout
                             </Button>
-                        </div>
+                        </Nav>
                     </Navbar.Collapse>
                 </Container>
             </Navbar>
-            <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
-            <main className="container mt-4">
-                <Routes>
-                    <Route index element={<Navigate to="home" replace />} />
-                    <Route path="home" element={<Home />} />
-                    <Route path="quiz" element={<Quiz />} />
-                    <Route path="score" element={<MyScore />} />
-                    <Route path="performance" element={<PerformanceHistory />} />
-                </Routes>
+
+            <main className="flex-grow-1">
+                <Container className="py-4">
+                    <Outlet />
+                </Container>
             </main>
-        </>
+
+            <footer className="bg-body-tertiary text-center text-muted py-3 mt-auto border-top">
+                &copy; {new Date().getFullYear()} Quiz Platform. All Rights Reserved.
+            </footer>
+
+            <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={false} />
+
+            <Modal show={showLogoutModal} onHide={() => setShowLogoutModal(false)} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Confirm Logout</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>Are you sure you want to log out?</Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowLogoutModal(false)}>
+                        Cancel
+                    </Button>
+                    <Button variant="danger" onClick={handleLogout}>
+                        Logout
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+        </div>
     );
 };
 

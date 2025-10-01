@@ -3,7 +3,10 @@ import { Form, Button, Card, ListGroup, Row, Col, FormSelect } from 'react-boots
 import { toast } from 'react-toastify';
 
 const getNotices = () => JSON.parse(localStorage.getItem("quizNotices")) || [];
-const saveNotices = (notices) => localStorage.setItem("quizNotices", JSON.stringify(notices));
+const saveNotices = (notices) => {
+    localStorage.setItem("quizNotices", JSON.stringify(notices));
+    window.dispatchEvent(new Event('storageUpdated'));
+};
 
 const ManageNotices = () => {
     const [notices, setNotices] = useState(getNotices());

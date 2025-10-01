@@ -26,7 +26,7 @@ const UserManagement = () => {
             toast.error("Username already exists.");
             return;
         }
-        const userIdPrefix = newUsername.substring(0, 3).toLowerCase();
+        const userIdPrefix = newUsername.substring(0, 3).toLowerCase().replace(/\s+/g, '');
         const generatedPassword = Math.random().toString(36).slice(-8);
         const userToAdd = { userId: `${userIdPrefix}_${Date.now()}`, username: newUsername, password: generatedPassword };
         const updatedUsers = [...users, userToAdd];
@@ -39,6 +39,12 @@ const UserManagement = () => {
     const handleDeleteUser = (userId) => {
         const updatedUsers = users.filter(u => u.userId !== userId);
         setUsers(updatedUsers);
+
+        // Also remove from active users if they are there
+        const activeUsers = JSON.parse(localStorage.getItem("activeUsers")) || [];
+        const updatedActiveUsers = activeUsers.filter(u => u.userId !== userId);
+        localStorage.setItem("activeUsers", JSON.stringify(updatedActiveUsers));
+
         saveUsers(updatedUsers);
         toast.error("User removed.");
     };
@@ -61,7 +67,7 @@ const UserManagement = () => {
                     </Card>
                 </Col>
                 <Col md={8}>
-                    <h2>User Management</h2>
+                    <h2 className="d-none d-md-block">User Management</h2>
                     <p>Below is the list of registered users and their credentials.</p>
                     <Table striped bordered hover responsive>
                         <thead>

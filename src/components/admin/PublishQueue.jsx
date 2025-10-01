@@ -92,12 +92,12 @@ const PublishQueue = () => {
                 </Card.Header>
                 <ListGroup variant="flush">
                     {draftQuestions.length > 0 ? draftQuestions.map(q => (
-                        <ListGroup.Item key={q.id} className="d-flex justify-content-between align-items-center">
-                            <div>
+                        <ListGroup.Item key={q.id} className="d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+                            <div className="mb-2 mb-md-0">
                                 <strong>{q.text_en}</strong>
                                 <p className="text-muted mb-1 small fst-italic">{q.text_ta}</p>
                             </div>
-                            <div className="d-flex align-items-center">
+                            <div className="d-flex align-items-center flex-shrink-0">
                                 <Button variant="info" size="sm" className="me-2" onClick={() => handlePublishClick(q.id)}>
                                     <i className="bi bi-upload"></i> Publish
                                 </Button>

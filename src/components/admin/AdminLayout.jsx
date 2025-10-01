@@ -12,61 +12,24 @@ import QuestionHistory from './QuestionHistory';
 import AppearanceSettings from './AppearanceSettings';
 import ManageAdmins from './ManageAdmins';
 import Leaderboard from './Leaderboard';
+import ActiveUser from './ActiveUser';
+import ViewScores from './ViewScores';
 import { useTheme } from '../../hooks/useTheme';
 
-// This would be a custom hook to manage admin authentication state
-const useAdminAuth = () => {
-  const [currentAdmin, setCurrentAdmin] = useState(() => {
-    const savedAdmin = localStorage.getItem("currentAdmin");
-    if (!savedAdmin) return null;
-    try {
-      return JSON.parse(savedAdmin);
-    } catch (error) {
-      console.error("Failed to parse admin data from localStorage, clearing it.", error);
-      localStorage.removeItem("currentAdmin");
-      return null;
-    }
-  });
-  const navigate = useNavigate();
-    const location = useLocation();
-
-  const login = (adminObject) => {
-    setCurrentAdmin(adminObject);
-    localStorage.setItem("currentAdmin", JSON.stringify(adminObject));
-    navigate('/admin/dashboard');
-  };
-
-  const logout = () => {
-    localStorage.removeItem("currentAdmin");
-    setCurrentAdmin(null);
-    navigate('/admin');
-  };
-
-  useEffect(() => {
-    // If the user is not logged in, ensure they are on the login page.
-    if (!currentAdmin && location.pathname !== '/admin/login') {
-      navigate('/admin/login', { replace: true });
-    }
-  }, [currentAdmin, navigate, location.pathname]);
-
-  return { currentAdmin, login, logout };
-};
-
-const AdminLayout = () => {
-  const { currentAdmin, login, logout } = useAdminAuth();
+/**
+ * Renders the main application layout for a logged-in admin.
+ * This component is wrapped in Routes and can safely use router hooks.
+ */
+const AdminApp = ({ currentAdmin, onLogout }) => {
   const [expanded, setExpanded] = useState(false);
   const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
 
-    // The main layout now handles routing. If not logged in, it shows the login route.
-    // If logged in, it shows the protected routes. This avoids rendering the whole layout just for the login page.
-  if (!currentAdmin) {
-    return (
-      <Routes>
-        <Route path="/login" element={<AdminLogin onLogin={login} />} />
-      </Routes>
-    );
-  }
-
+  const handleLogout = () => {
+    onLogout();
+    navigate('/admin/login'); // Ensure redirection after logout
+  };
+  
   return (
     <>
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
@@ -90,12 +53,13 @@ const AdminLayout = () => {
               <Nav.Link as={Link} to="/admin/appearance" onClick={() => setExpanded(false)}><i className="bi bi-palette-fill me-1"></i>Appearance</Nav.Link>
               <NavDropdown title={<><i className="bi bi-tools me-1"></i> More</>} id="admin-more-dropdown">
                 <NavDropdown.Item as={Link} to="/admin/leaderboard" onClick={() => setExpanded(false)}><i className="bi bi-trophy-fill me-2"></i>Leaderboard</NavDropdown.Item>
-                <NavDropdown.Item as={Link} to="/admin/scores" onClick={() => setExpanded(false)}><i className="bi bi-card-checklist me-2"></i>View Scores</NavDropdown.Item>
+                <NavDropdown.Item as={Link} to="/admin/scores" onClick={() => setExpanded(false)}><i className="bi bi-clipboard2-pulse-fill me-2"></i>View Scores</NavDropdown.Item>
+                <NavDropdown.Item as={Link} to="/admin/activeUser" onClick={() => setExpanded(false)}><i className="bi bi-card-checklist me-2"></i>Active User</NavDropdown.Item>
                 {/* Add other dropdown items here */}
               </NavDropdown>
             </Nav>
-            <div className="d-flex align-items-center">
-              <Navbar.Text className="me-3">
+            <div className="d-flex align-items-center mt-2 mt-lg-0">
+              <Navbar.Text className="me-3 d-none d-lg-block">
                 Welcome, {currentAdmin.email}
               </Navbar.Text>
               <Form.Check
@@ -106,7 +70,7 @@ const AdminLayout = () => {
                 onChange={toggleTheme}
                 className="text-white me-3"
               />
-              <Button variant="outline-light" size="sm" onClick={logout}>
+              <Button variant="outline-light" size="sm" onClick={handleLogout} className="ms-lg-2">
                 <i className="bi bi-shield-slash-fill me-1"></i>Logout
               </Button>
             </div>
@@ -114,9 +78,10 @@ const AdminLayout = () => {
         </Container>
       </Navbar>
 
-      <main className="container mt-4">
+      <main className="container-fluid mt-4">
                 <Routes>
           <Route index element={<Dashboard />} /> {/* "index" handles both /admin and /admin/dashboard */}
+          <Route path="dashboard" element={<Dashboard />} /> {/* Add explicit route for dashboard */}
           <Route path="questions" element={<ManageQuestions />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="notices" element={<ManageNotices />} />
@@ -126,10 +91,54 @@ const AdminLayout = () => {
           <Route path="publish" element={<PublishQueue />} />
           <Route path="history" element={<QuestionHistory />} />
           <Route path="leaderboard" element={<Leaderboard />} />
+          <Route path="scores" element={<ViewScores />} />
+          <Route path="activeUser" element={<ActiveUser />} />
           {/* Add other admin routes here */}
         </Routes>
       </main>
     </>
+  );
+};
+
+/**
+ * Main layout component for the admin section.
+ * It handles the routing logic for authenticated vs. unauthenticated states.
+ */
+const AdminLayout = () => {
+  const [currentAdmin, setCurrentAdmin] = useState(() => {
+    const savedAdmin = localStorage.getItem("currentAdmin");
+    if (!savedAdmin) return null;
+    try {
+      return JSON.parse(savedAdmin);
+    } catch (error) {
+      console.error("Failed to parse admin data from localStorage, clearing it.", error);
+      localStorage.removeItem("currentAdmin");
+      return null;
+    }
+  });
+
+  const login = (adminObject) => {
+    setCurrentAdmin(adminObject);
+    localStorage.setItem("currentAdmin", JSON.stringify(adminObject));
+    // Navigation will be handled by the login component
+  };
+
+  const logout = () => {
+    localStorage.removeItem("currentAdmin");
+    setCurrentAdmin(null);
+  };
+
+  return (
+    <Routes>
+      {!currentAdmin ? (
+        <>
+          <Route path="login" element={<AdminLogin onLogin={login} />} />
+      
+        </>
+      ) : (
+        <Route path="*" element={<AdminApp currentAdmin={currentAdmin} onLogout={logout} />} />
+      )}
+    </Routes>
   );
 };
 

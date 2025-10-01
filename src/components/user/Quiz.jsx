@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, Button, Form, ProgressBar, Alert, Row, Col } from 'react-bootstrap';
+import { useNavigate, Link } from 'react-router-dom';
+import { Card, Button, Form, ProgressBar, Alert, ButtonGroup, Spinner } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 
 const Quiz = () => {
@@ -10,33 +10,40 @@ const Quiz = () => {
     const [userAnswers, setUserAnswers] = useState([]);
     const [isAnswered, setIsAnswered] = useState(false);
     const [quizFinished, setQuizFinished] = useState(false);
+    const [lang, setLang] = useState('en'); // 'en' or 'ta'
+    const [loading, setLoading] = useState(true);
+    const [completedQuizInfo, setCompletedQuizInfo] = useState(null);
+    const [feedbackMessage, setFeedbackMessage] = useState('');
     const navigate = useNavigate();
     const currentUser = JSON.parse(localStorage.getItem("currentUser"));
 
     // This function will be called to end the quiz, either by completion or timeout.
-    const finishQuiz = (isTimeout = false) => {
+    const finishQuiz = (finalAnswers, isTimeout = false) => {
         setQuizFinished(true);
-
         if (isTimeout) {
             toast.warn("Time is up! Calculating score for answered questions.");
         } else {
             toast.success("Quiz completed! Navigating to your score...");
         }
-
-        const finalScore = userAnswers.filter(a => a.isCorrect).length;
+        
+        const finalScore = finalAnswers.filter(a => a.isCorrect).length;
         const quizResult = {
             score: finalScore,
             total: questions.length,
-            answers: userAnswers,
+            answers: finalAnswers,
             date: new Date().toISOString(),
+            quizId: questions.map(q => q.id).sort().join('-'), // Unique ID for this set of questions
         };
         // Save to a history array instead of overwriting
         const history = JSON.parse(localStorage.getItem(`quizHistory_${currentUser.userId}`)) || [];
         history.unshift(quizResult); // Add new result to the beginning of the array
         localStorage.setItem(`quizHistory_${currentUser.userId}`, JSON.stringify(history));
+        localStorage.removeItem(`quizProgress_${currentUser.userId}`); // Clean up saved progress
         window.dispatchEvent(new Event('storageUpdated')); // Notify dashboard of new score
 
-        setTimeout(() => navigate('/score'), 2500);
+        // Immediately navigate to the score detail page for the quiz just taken.
+        const timestamp = new Date(quizResult.date).getTime();
+        navigate(`/user/score/${timestamp}`);
     };
 
     useEffect(() => {
@@ -48,39 +55,96 @@ const Quiz = () => {
             const disappear = new Date(q.disappearDate);
             return q.status === 'published' && now >= release && now < disappear;
         });
-        setQuestions(activeQuestions);
+
+        if (activeQuestions.length > 0) {
+            const quizId = activeQuestions.map(q => q.id).sort().join('-');
+            const history = JSON.parse(localStorage.getItem(`quizHistory_${currentUser.userId}`)) || [];
+            const existingResult = history.find(r => r.quizId === quizId);
+
+            if (existingResult) {
+                // User has already completed this quiz
+                setCompletedQuizInfo({ date: existingResult.date });
+            } else {
+                // User has not completed this quiz, load it and check for saved progress
+                setQuestions(activeQuestions);
+                const savedProgress = JSON.parse(localStorage.getItem(`quizProgress_${currentUser.userId}`));
+                if (savedProgress && savedProgress.quizId === quizId) {
+                    setCurrentQuestionIndex(savedProgress.currentQuestionIndex);
+                    setUserAnswers(savedProgress.userAnswers);
+                    if (savedProgress.selectedOption) {
+                        setSelectedOption(savedProgress.selectedOption);
+                    }
+                    toast.info("Quiz progress restored!");
+                }
+            }
+        }
+        setLoading(false);
 
         // Prevent user from leaving the page
         const handleBeforeUnload = (e) => {
-            if (!quizFinished) {
-                e.preventDefault();
-                e.returnValue = 'Are you sure you want to leave? Your quiz progress will be lost.';
+            // Check if there's an active quiz in progress
+            const savedProgress = localStorage.getItem(`quizProgress_${currentUser.userId}`);
+            if (savedProgress) {
+                e.preventDefault(Reload);
+                // Standard for most modern browsers
+                return (e.returnValue = 'Are you sure you want to leave? Your quiz progress will be lost.');
             }
         };
 
         window.addEventListener('beforeunload', handleBeforeUnload);
-
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
         };
-    }, [quizFinished]); // Rerun if quizFinished changes to remove the listener
+    }, [currentUser.userId]);
+
+    // Save progress to localStorage
+    useEffect(() => {
+        // Debounce saving progress to avoid excessive writes to localStorage
+        const handler = setTimeout(() => {
+            if (questions.length > 0 && !quizFinished) {
+                const quizId = questions.map(q => q.id).sort().join('-');
+                const progressToSave = { quizId, currentQuestionIndex, userAnswers, selectedOption };
+                localStorage.setItem(`quizProgress_${currentUser.userId}`, JSON.stringify(progressToSave));
+            }
+        }, 500); // Wait 500ms after the last change before saving
+
+        // Cleanup the timeout if the component unmounts or dependencies change
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [currentQuestionIndex, userAnswers, selectedOption, questions, quizFinished, currentUser.userId]);
+
+    // This effect checks if the current question has already been answered upon load or navigation
+    useEffect(() => {
+        if (questions.length > 0 && currentQuestionIndex < questions.length && !quizFinished) {
+            const currentQuestionId = questions[currentQuestionIndex].id;
+            const existingAnswer = userAnswers.find(a => a.questionId === currentQuestionId);
+
+            if (existingAnswer) {
+                // If an answer exists, lock the question and show the previous answer
+                setSelectedOption(existingAnswer.userAnswer);
+                setIsAnswered(true);
+            } else {
+                // Otherwise, ensure the question is ready for a new answer
+                setIsAnswered(false);
+            }
+        }
+    }, [currentQuestionIndex, questions, userAnswers, quizFinished]);
 
     useEffect(() => {
-        // Block browser back navigation during the quiz
-        const blockBackNavigation = (e) => {
-            window.history.pushState(null, '', window.location.href);
-            toast.warn("You cannot go back during the quiz. Please complete it first.");
-        };
-
         if (!quizFinished) {
+            // Push a "blocker" state into the history. When the user tries to go back,
+            // this is the state they will pop.
             window.history.pushState(null, '', window.location.href);
+            const blockBackNavigation = () => {
+                // Push it again to "trap" the user on the current page
+                window.history.pushState(null, '', window.location.href);
+                toast.warn("You cannot go back during the quiz. Please complete it first.");
+            };
             window.addEventListener('popstate', blockBackNavigation);
-        }
-
-        return () => {
-            window.removeEventListener('popstate', blockBackNavigation);
+            return () => window.removeEventListener('popstate', blockBackNavigation);
         };
-    }, [quizFinished]); // Rerun if quizFinished changes to remove the listener
+    }, [quizFinished]);
     
     useEffect(() => {
         if (questions.length === 0 || quizFinished) return;
@@ -105,39 +169,62 @@ const Quiz = () => {
         }
 
         const currentQuestion = questions[currentQuestionIndex];
-        const isCorrect = selectedOption === currentQuestion.correctAnswer_en;
+        const isCorrect = !!(selectedOption && selectedOption === currentQuestion.correctAnswer_en);
 
         const updatedAnswers = [...userAnswers, {
             questionId: currentQuestion.id,
-            questionText: currentQuestion.text_en,
+            questionText_en: currentQuestion.text_en,
+            questionText_ta: currentQuestion.text_ta,
             userAnswer: selectedOption,
+            userAnswer_ta: currentQuestion.options_ta[currentQuestion.options_en.indexOf(selectedOption)],
             correctAnswer: currentQuestion.correctAnswer_en,
+            correctAnswer_ta: currentQuestion.correctAnswer_ta,
+            // Storing all options for context in review
+            options_en: currentQuestion.options_en,
+            options_ta: currentQuestion.options_ta,
             isCorrect: isCorrect,
         }];
         setUserAnswers(updatedAnswers);
 
         setIsAnswered(true); // Show feedback
 
-        // Automatically move to the next question or finish
-        setTimeout(() => {
+        if (currentQuestionIndex < questions.length - 1) {
+            // Move to the next question after a delay
+            setTimeout(() => {
             setIsAnswered(false);
-            setSelectedOption('');
-
-            if (currentQuestionIndex < questions.length - 1) {
+            setSelectedOption(''); // This will be reset by the effect above if needed
                 setCurrentQuestionIndex(prevIndex => prevIndex + 1);
-            } else {
-                finishQuiz(false); // End quiz normally
-            }
-        }, 2500); // 2.5-second delay to show feedback
+            }, 2000); // 2-second delay
+        } else {
+            // This is the last question, finish the quiz
+            setFeedbackMessage("Quiz Finished! Calculating your score...");
+            setTimeout(() => finishQuiz(updatedAnswers, false), 2000);
+        }
     };
 
-    if (questions.length === 0) {
+    if (loading) {
+        return (
+            <div className="text-center">
+                <Spinner animation="border" variant="primary" />
+                <p>Checking for active quizzes...</p>
+            </div>
+        );
+    }
+
+    if (completedQuizInfo) {
+        return (
+            <Alert variant="warning">
+                You have already completed this quiz. <Link to={`/user/score/${new Date(completedQuizInfo.date).getTime()}`}>View your score.</Link>
+            </Alert>
+        );
+    }
+
+    if (questions.length === 0 && !loading) {
         return <Alert variant="info">There are no active quizzes available at the moment. Please check back later.</Alert>;
     }
 
     if (quizFinished) {
-        // This state is now handled by the final navigation
-        return <Alert variant="success">Calculating your results...</Alert>;
+        return <Alert Alert variant="success">{feedbackMessage || 'Calculating your results...'}</Alert>;
     }
 
     const currentQuestion = questions[currentQuestionIndex];
@@ -145,53 +232,46 @@ const Quiz = () => {
 
     return (
         <Card className="shadow-lg">
-            <Card.Header>
-                <Card.Title>Today's Quiz</Card.Title>
-                <ProgressBar now={progress} label={`${currentQuestionIndex + 1}/${questions.length}`} />
+            <Card.Header className="d-flex justify-content-between align-items-center">
+                <Card.Title className="mb-0">Today's Quiz</Card.Title>
+                <ButtonGroup size="sm">
+                    <Button variant={lang === 'en' ? 'primary' : 'outline-primary'} onClick={() => setLang('en')}>EN</Button>
+                    <Button variant={lang === 'ta' ? 'primary' : 'outline-primary'} onClick={() => setLang('ta')}>TA</Button>
+                </ButtonGroup>
             </Card.Header>
             <Card.Body>
-                <Row>
-                    <Col md={6}>
-                        <h5>{currentQuestion.text_en}</h5>
-                        <Form>
-                            {currentQuestion.options_en.map((option, index) => {
-                                const isCorrectAnswer = option === currentQuestion.correctAnswer_en;
-                                let variant = '';
-                                if (isAnswered) {
-                                    if (isCorrectAnswer) variant = 'success';
-                                    else if (option === selectedOption) variant = 'danger';
-                                }
-                                return (
-                                    <Form.Check
-                                        key={`en-${index}`}
-                                        type="radio"
-                                        id={`en-option-${index}`}
-                                        label={option}
-                                        value={option}
-                                        checked={selectedOption === option}
-                                        onChange={(e) => setSelectedOption(e.target.value)}
-                                        disabled={isAnswered}
-                                        className={`p-2 rounded mb-2 border-${variant} bg-${variant}-subtle`}
-                                    />
-                                );
-                            })}
-                        </Form>
-                    </Col>
-                    <Col md={6}>
-                        <h5 className="text-muted">{currentQuestion.text_ta}</h5>
-                        <div className="mt-4 pt-1" style={{ cursor: isAnswered ? 'default' : 'pointer' }}>
-                            {currentQuestion.options_ta.map((option, index) => {
-                                const correspondingEnglishOption = currentQuestion.options_en[index];
-                                return (
-                                    <div key={`ta-${index}`} className={`p-2 mb-2 text-muted rounded ${selectedOption === correspondingEnglishOption ? 'bg-info-subtle' : ''}`} onClick={() => !isAnswered && setSelectedOption(correspondingEnglishOption)}>{option}</div>
-                                );
-                            })}
-                        </div>
-                    </Col>
-                </Row>
+                <ProgressBar now={progress} label={`${currentQuestionIndex + 1}/${questions.length}`} className="mb-4" />
+                
+                <h5 style={{ wordBreak: 'break-word' }}>{currentQuestion[`text_${lang}`]}</h5>
+                
+                <Form>
+                    {currentQuestion[`options_${lang}`].map((option, index) => {
+                        const englishOption = currentQuestion.options_en[index];
+                        const isCorrectAnswer = englishOption === currentQuestion.correctAnswer_en;
+                        let variant = '';
+                        if (isAnswered) {
+                            if (isCorrectAnswer) variant = 'success';
+                            else if (selectedOption === englishOption) variant = 'danger';
+                        }
+                        return (
+                            <Form.Check
+                                key={`${lang}-${index}`}
+                                type="radio"
+                                id={`option-${index}`}
+                                label={option}
+                                value={englishOption}
+                                checked={selectedOption === englishOption}
+                                onChange={(e) => setSelectedOption(e.target.value)}
+                                disabled={isAnswered}
+                                className={`p-3 rounded mb-2 border ${variant ? `border-${variant} bg-${variant}-subtle` : 'border-light'}`}
+                                labelClassName={variant ? `text-${variant}-emphasis` : ''}
+                            />
+                        );
+                    })}
+                </Form>
             </Card.Body>
             <Card.Footer className="text-end">
-                <Button onClick={handleSubmitAnswer} disabled={isAnswered}>
+                <Button onClick={handleSubmitAnswer} disabled={isAnswered || !selectedOption}>
                     Submit Answer
                 </Button>
             </Card.Footer>

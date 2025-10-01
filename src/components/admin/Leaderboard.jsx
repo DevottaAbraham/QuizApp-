@@ -1,23 +1,38 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Table, Button } from 'react-bootstrap';
 import pptxgen from "pptxgenjs";
 
 const Leaderboard = () => {
-    // Fetch all users to get their IDs and usernames
-    const allUsers = JSON.parse(localStorage.getItem("quizUsers")) || [];
-    const allScores = allUsers.map(user => {
-        const result = JSON.parse(localStorage.getItem(`quizResult_${user.userId}`));
-        if (result) {
-            return {
-                userId: user.userId,
-                username: user.username,
-                score: result.score,
-            };
-        }
-        return null;
-    }).filter(Boolean); // Filter out users with no scores
-    
-    const sortedScores = allScores.sort((a, b) => b.score - a.score);
+    const [sortedScores, setSortedScores] = useState([]);
+
+    useEffect(() => {
+        const calculateScores = () => {
+            const allUsers = JSON.parse(localStorage.getItem("quizUsers")) || [];
+            const allScores = allUsers.map(user => {
+                const history = JSON.parse(localStorage.getItem(`quizHistory_${user.userId}`)) || [];
+                if (history.length === 0) return null;
+
+                // Find the best score from the user's history
+                const scores = history.map(h => h.score).filter(s => typeof s === 'number');
+                if (scores.length === 0) return null;
+
+                const bestScore = Math.max(...scores);
+                return {
+                    userId: user.userId, username: user.username, score: bestScore
+                };
+            }).filter(Boolean);
+
+            setSortedScores(allScores.sort((a, b) => b.score - a.score));
+        };
+
+        calculateScores();
+
+        window.addEventListener('storageUpdated', calculateScores);
+
+        return () => {
+            window.removeEventListener('storageUpdated', calculateScores);
+        };
+    }, []);
 
     const handleDownloadPPT = () => {
         let pptx = new pptxgen();
