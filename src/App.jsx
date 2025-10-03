@@ -1,96 +1,102 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, Outlet } from 'react-router-dom';
 import AdminLogin from './components/admin/AdminLogin.jsx';
-import AdminPage from './Pages/AdminPage/AdminPage.jsx'; 
+import AdminPage from './Pages/AdminPage/AdminPage.jsx';
 import UserLogin from './components/user/UserLogin.jsx';
 import './components/user/UserLayout.css';
 import UserPage from './pages/UserPage.jsx';
 
-
-function App() {
-  const [currentUser, setCurrentUser] = useState(() => {
-    const savedUser = localStorage.getItem("currentUser");
+// Custom hook for managing state with localStorage
+function useStorageState(key, defaultValue) {
+  const [state, setState] = useState(() => {
+    const savedState = localStorage.getItem(key);
     try {
-      return savedUser ? JSON.parse(savedUser) : null;
+      return savedState ? JSON.parse(savedState) : defaultValue;
     } catch {
-      return null;
+      return defaultValue;
     }
   });
-  const [currentAdmin, setCurrentAdmin] = useState(() => {
-    const savedAdmin = localStorage.getItem("currentAdmin");
-    try {
-      return savedAdmin ? JSON.parse(savedAdmin) : null;
-    } catch {
-      return null;
-    }
-  });
-
-  const navigate = useNavigate();
 
   useEffect(() => {
-    const handleStorageChange = () => {
-      const savedUser = localStorage.getItem("currentUser");
-      setCurrentUser(savedUser ? JSON.parse(savedUser) : null);
-    };
-    const handleAdminStorageChange = () => {
-      const savedAdmin = localStorage.getItem("currentAdmin");
-      setCurrentAdmin(savedAdmin ? JSON.parse(savedAdmin) : null);
+    const handleStorageChange = (e) => {
+      if (e.key === key) {
+        try {
+          setState(e.newValue ? JSON.parse(e.newValue) : defaultValue);
+        } catch {
+          setState(defaultValue);
+        }
+      }
     };
 
+    // 'storage' event is for changes in other tabs.
     window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('storage', handleAdminStorageChange);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('storage', handleAdminStorageChange);
     };
-  }, []);
+  }, [key, defaultValue]);
+
+  const updateState = (newState) => {
+    if (newState) {
+      localStorage.setItem(key, JSON.stringify(newState));
+    } else {
+      localStorage.removeItem(key);
+    }
+    setState(newState);
+    // Dispatch a custom event for same-tab updates if needed elsewhere.
+    window.dispatchEvent(new StorageEvent('storage', { key }));
+  };
+
+  return [state, updateState];
+}
+
+// Protected Route Components
+const AdminProtectedRoute = ({ admin, onLogout, redirectPath = '/admin/login' }) => {
+  if (!admin) {
+    return <Navigate to={redirectPath} replace />;
+  }
+  return <AdminPage currentAdmin={admin} onLogout={onLogout} />;
+};
+
+const UserProtectedRoute = ({ user, onLogout, redirectPath = '/user/login' }) => {
+  if (!user) {
+    return <Navigate to={redirectPath} replace />;
+  }
+  return <UserPage currentUser={user} onLogout={onLogout} />;
+};
+
+function App() {
+  const [currentUser, setCurrentUser] = useStorageState("currentUser", null);
+  const [currentAdmin, setCurrentAdmin] = useStorageState("currentAdmin", null);
+
+  const navigate = useNavigate();
 
   const handleLogin = (user) => {
-    // Add user to active users list
     const activeUsers = JSON.parse(localStorage.getItem("activeUsers")) || [];
     if (!activeUsers.some(u => u.userId === user.userId)) {
       activeUsers.push(user);
       localStorage.setItem("activeUsers", JSON.stringify(activeUsers));
     }
-
-    localStorage.setItem("currentUser", JSON.stringify(user));
     setCurrentUser(user);
-    window.dispatchEvent(new Event('storageUpdated')); // Notify dashboard
-
-    // Check for active quizzes and redirect accordingly
-    const allQuestions = JSON.parse(localStorage.getItem("quizQuestions")) || [];
-    const now = new Date();
-    const hasActiveQuiz = allQuestions.some(q => {
-        if (q.status !== 'published' || !q.releaseDate || !q.disappearDate) {
-            return false;
-        }
-        const release = new Date(q.releaseDate);
-        const disappear = new Date(q.disappearDate);
-        return now >= release && now < disappear;
-    });
-
-    navigate(hasActiveQuiz ? '/user/quiz' : '/user/home');
+    navigate('/user/home'); // Simplified redirection
   };
 
   const handleLogout = () => {
-    // Remove user from active users list
-    const activeUsers = JSON.parse(localStorage.getItem("activeUsers")) || [];
-    const updatedActiveUsers = activeUsers.filter(u => u.userId !== currentUser.userId);
-    localStorage.setItem("activeUsers", JSON.stringify(updatedActiveUsers));
-    localStorage.removeItem("currentUser");
+    if (currentUser) {
+      const activeUsers = JSON.parse(localStorage.getItem("activeUsers")) || [];
+      const updatedActiveUsers = activeUsers.filter(u => u.userId !== currentUser.userId);
+      localStorage.setItem("activeUsers", JSON.stringify(updatedActiveUsers));
+    }
     setCurrentUser(null);
     navigate('/user/login');
   };
 
   const handleAdminLogin = (admin) => {
-    localStorage.setItem("currentAdmin", JSON.stringify(admin));
     setCurrentAdmin(admin);
     navigate('/admin/dashboard');
   };
 
   const handleAdminLogout = () => {
-    localStorage.removeItem("currentAdmin");
     setCurrentAdmin(null);
     navigate('/admin/login');
   };
@@ -100,17 +106,16 @@ function App() {
       <Route path="/" element={<Navigate to="/admin/login" replace />} />
 
       {/* Admin Routes */}
-      <Route
-        path="admin/*"
-        element={
-          currentAdmin ? <AdminPage currentAdmin={currentAdmin} onLogout={handleAdminLogout} /> : <Navigate to="/admin/login" replace />
-        }
-      />
-      <Route path="admin/login" element={!currentAdmin ? <AdminLogin onLogin={handleAdminLogin} /> : <Navigate to="/admin/dashboard" replace />} />
-      
+      <Route path="admin/*" element={<AdminProtectedRoute admin={currentAdmin} onLogout={handleAdminLogout} />} />
+      <Route path="admin/login" element={
+        currentAdmin ? <Navigate to="/admin/dashboard" replace /> : <AdminLogin onLogin={handleAdminLogin} />
+      } />
+
       {/* User Routes */}
-      <Route path="user/*" element={currentUser ? <UserPage currentUser={currentUser} onLogout={handleLogout} /> : <Navigate to="/user/login" replace />} />
-      <Route path="user/login" element={<UserLogin onLogin={handleLogin} />} />
+      <Route path="user/*" element={<UserProtectedRoute user={currentUser} onLogout={handleLogout} />} />
+      <Route path="user/login" element={
+        currentUser ? <Navigate to="/user/home" replace /> : <UserLogin onLogin={handleLogin} />
+      } />
 
       {/* Fallback for any other unmatched routes */}
       <Route path="*" element={<Navigate to="/" replace />} />

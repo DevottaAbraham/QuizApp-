@@ -1,14 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { getHomePageContent } from './contentService';
 
 const Home = () => {
-    const defaultContent = { title: 'Welcome to the Bible Quiz!', lead: 'Test your knowledge and grow in faith.' };
-    let homeContent = defaultContent;
- 
-    try {
-        const savedContent = localStorage.getItem('userHomePageContent');
-        if (savedContent) homeContent = JSON.parse(savedContent);
-    } catch (error) {
-        console.error('Could not parse userHomePageContent from localStorage:', error);
+    const [homeContent, setHomeContent] = useState({ title: 'Loading...', lead: '' });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchContent = async () => {
+            try {
+                const content = await getHomePageContent();
+                setHomeContent(content);
+            } catch (error) {
+                console.error('Failed to fetch home page content:', error);
+                setHomeContent({ title: 'Error', lead: 'Could not load content.' });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchContent();
+    }, []);
+
+    if (loading) {
+        return <div className="text-center"><p>Loading...</p></div>;
     }
  
     return (
