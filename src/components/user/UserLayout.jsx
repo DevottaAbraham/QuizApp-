@@ -1,57 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Navbar, Nav, Container, Button, Modal, Badge, Form } from 'react-bootstrap';
+import React, { useState, useCallback } from 'react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Navbar, Nav, Container, Button, Modal, Form } from 'react-bootstrap';
 import { ToastContainer } from 'react-toastify';
 import { useTheme } from '../../hooks/useTheme';
 
 const UserLayout = ({ currentUser, onLogout }) => {
     const [showLogoutModal, setShowLogoutModal] = useState(false);
-    const [newNoticesCount, setNewNoticesCount] = useState(0);
-    const [isBellRinging, setIsBellRinging] = useState(false);
     const { theme, toggleTheme } = useTheme();
-    const navigate = useNavigate();
     const location = useLocation();
 
-    const checkForNewNotices = useCallback(() => {
-        const allNotices = JSON.parse(localStorage.getItem("quizNotices")) || [];
-        const userSeenNotices = JSON.parse(localStorage.getItem(`seenNotices_${currentUser.userId}`)) || [];
-
-        const newNotices = allNotices.filter(notice =>
-            (notice.recipient === 'global' || notice.recipient === currentUser.userId) &&
-            !userSeenNotices.includes(notice.id)
-        );
-
-        if (newNotices.length > newNoticesCount) {
-            setIsBellRinging(true);
-            setTimeout(() => setIsBellRinging(false), 1000); // Animation duration
-        }
-        setNewNoticesCount(newNotices.length);
-    }, [currentUser.userId, newNoticesCount]);
-
-    useEffect(() => {
-        checkForNewNotices();
-        const interval = setInterval(checkForNewNotices, 5000); // Check every 5 seconds
-        return () => clearInterval(interval);
-    }, [checkForNewNotices]);
-
-    const handleLogout = () => {
+    const handleLogout = useCallback(() => {
         onLogout();
-    };
-
-    const handleBellClick = () => {
-        const allNotices = JSON.parse(localStorage.getItem("quizNotices")) || [];
-        const relevantNoticeIds = allNotices
-            .filter(notice => notice.recipient === 'global' || notice.recipient === currentUser.userId)
-            .map(notice => notice.id);
-        
-        localStorage.setItem(`seenNotices_${currentUser.userId}`, JSON.stringify(relevantNoticeIds));
-        setNewNoticesCount(0);
-        
-        // If not already on the dashboard, navigate there
-        if (location.pathname !== '/user/dashboard') {
-            navigate('/user/dashboard');
-        }
-    };
+    }, [onLogout]);
 
     return (
         <div className="d-flex flex-column min-vh-100">
@@ -67,14 +27,6 @@ const UserLayout = ({ currentUser, onLogout }) => {
                             <Nav.Link as={Link} to="/user/score" active={location.pathname.startsWith('/user/score')}>Performance</Nav.Link>
                         </Nav>
                         <Nav className="ms-auto align-items-center">
-                            <Nav.Link onClick={handleBellClick} className="position-relative me-lg-2" title="View Notices">
-                                <i className={`bi bi-bell-fill fs-5 ${isBellRinging ? 'ring' : ''}`}></i>
-                                {newNoticesCount > 0 && (
-                                    <Badge pill bg="danger" className="position-absolute top-0 start-100 translate-middle border border-light" style={{ fontSize: '0.6em' }}>
-                                        {newNoticesCount > 9 ? '9+' : newNoticesCount}
-                                    </Badge>
-                                )}
-                            </Nav.Link>
                             <Form.Check
                                 type="switch"
                                 id="theme-switch-user"
@@ -88,7 +40,7 @@ const UserLayout = ({ currentUser, onLogout }) => {
                                 <i className="bi bi-person-circle me-1"></i>
                                 <span className="fw-bold">{currentUser.username}</span>
                             </Navbar.Text>
-                            <Button variant="outline-light" onClick={() => setShowLogoutModal(true)} className="ms-lg-3 mt-2 mt-lg-0">
+                            <Button variant="outline-light" onClick={() => setShowLogoutModal(true)} className="ms-lg-3 my-2 my-lg-0" >
                                 <i className="bi bi-box-arrow-right me-1"></i> Logout
                             </Button>
                         </Nav>

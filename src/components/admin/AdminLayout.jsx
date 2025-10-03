@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Navbar, Nav, Container, Button, NavDropdown, Form } from 'react-bootstrap';
-import { ToastContainer } from 'react-toastify';
-import AdminLogin from './AdminLogin';
 import Dashboard from './Dashboard';
 import ManageQuestions from './ManageQuestions';
 import UserManagement from './UserManagement';
@@ -20,7 +18,7 @@ import { useTheme } from '../../hooks/useTheme';
  * Renders the main application layout for a logged-in admin.
  * This component is wrapped in Routes and can safely use router hooks.
  */
-const AdminApp = ({ currentAdmin, onLogout }) => {
+const AdminLayout = ({ currentAdmin, onLogout }) => {
   const [expanded, setExpanded] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -32,7 +30,6 @@ const AdminApp = ({ currentAdmin, onLogout }) => {
   
   return (
     <>
-      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
       <Navbar bg="dark" variant="dark" expand="lg" className="sticky-top shadow" expanded={expanded}>
         <Container fluid>
           <Navbar.Brand as={Link} to="/admin/dashboard">Admin Panel</Navbar.Brand>
@@ -97,48 +94,6 @@ const AdminApp = ({ currentAdmin, onLogout }) => {
         </Routes>
       </main>
     </>
-  );
-};
-
-/**
- * Main layout component for the admin section.
- * It handles the routing logic for authenticated vs. unauthenticated states.
- */
-const AdminLayout = () => {
-  const [currentAdmin, setCurrentAdmin] = useState(() => {
-    const savedAdmin = localStorage.getItem("currentAdmin");
-    if (!savedAdmin) return null;
-    try {
-      return JSON.parse(savedAdmin);
-    } catch (error) {
-      console.error("Failed to parse admin data from localStorage, clearing it.", error);
-      localStorage.removeItem("currentAdmin");
-      return null;
-    }
-  });
-
-  const login = (adminObject) => {
-    setCurrentAdmin(adminObject);
-    localStorage.setItem("currentAdmin", JSON.stringify(adminObject));
-    // Navigation will be handled by the login component
-  };
-
-  const logout = () => {
-    localStorage.removeItem("currentAdmin");
-    setCurrentAdmin(null);
-  };
-
-  return (
-    <Routes>
-      {!currentAdmin ? (
-        <>
-          <Route path="login" element={<AdminLogin onLogin={login} />} />
-      
-        </>
-      ) : (
-        <Route path="*" element={<AdminApp currentAdmin={currentAdmin} onLogout={logout} />} />
-      )}
-    </Routes>
   );
 };
 

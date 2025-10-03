@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import AdminLayout from './components/admin/AdminLayout.jsx';
-import UserLayout from './components/user/UserLayout.jsx'; 
+import AdminLogin from './components/admin/AdminLogin.jsx';
+import AdminPage from './Pages/AdminPage/AdminPage.jsx'; 
 import UserLogin from './components/user/UserLogin.jsx';
-import UserDashboard from './components/user/UserDashboard.jsx';
-import Home from './components/user/Home.jsx';
-import Quiz from './components/user/Quiz.jsx';
-import PerformanceHistory from './components/user/PerformanceHistory.jsx';
-import ScoreDetail from './components/user/ScoreDetail.jsx';
 import './components/user/UserLayout.css';
+import UserPage from './pages/UserPage.jsx';
+
 
 function App() {
   const [currentUser, setCurrentUser] = useState(() => {
@@ -19,6 +16,15 @@ function App() {
       return null;
     }
   });
+  const [currentAdmin, setCurrentAdmin] = useState(() => {
+    const savedAdmin = localStorage.getItem("currentAdmin");
+    try {
+      return savedAdmin ? JSON.parse(savedAdmin) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -26,8 +32,18 @@ function App() {
       const savedUser = localStorage.getItem("currentUser");
       setCurrentUser(savedUser ? JSON.parse(savedUser) : null);
     };
+    const handleAdminStorageChange = () => {
+      const savedAdmin = localStorage.getItem("currentAdmin");
+      setCurrentAdmin(savedAdmin ? JSON.parse(savedAdmin) : null);
+    };
+
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener('storage', handleAdminStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('storage', handleAdminStorageChange);
+    };
   }, []);
 
   const handleLogin = (user) => {
@@ -67,30 +83,37 @@ function App() {
     navigate('/user/login');
   };
 
+  const handleAdminLogin = (admin) => {
+    localStorage.setItem("currentAdmin", JSON.stringify(admin));
+    setCurrentAdmin(admin);
+    navigate('/admin/dashboard');
+  };
+
+  const handleAdminLogout = () => {
+    localStorage.removeItem("currentAdmin");
+    setCurrentAdmin(null);
+    navigate('/admin/login');
+  };
+
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/admin/login" replace />} />
 
-      <Route path="admin/*" element={<AdminLayout />} />
+      {/* Admin Routes */}
+      <Route
+        path="admin/*"
+        element={
+          currentAdmin ? <AdminPage currentAdmin={currentAdmin} onLogout={handleAdminLogout} /> : <Navigate to="/admin/login" replace />
+        }
+      />
+      <Route path="admin/login" element={!currentAdmin ? <AdminLogin onLogin={handleAdminLogin} /> : <Navigate to="/admin/dashboard" replace />} />
+      
+      {/* User Routes */}
+      <Route path="user/*" element={currentUser ? <UserPage currentUser={currentUser} onLogout={handleLogout} /> : <Navigate to="/user/login" replace />} />
+      <Route path="user/login" element={<UserLogin onLogin={handleLogin} />} />
 
-      {currentUser ? (
-        // Authenticated user routes
-        <Route path="user" element={<UserLayout currentUser={currentUser} onLogout={handleLogout} />}>
-          <Route index element={<Navigate to="home" replace />} />
-          <Route path="home" element={<Home />} />
-          <Route path="dashboard" element={<UserDashboard />} />
-          <Route path="quiz" element={<Quiz />} />
-          <Route path="score" element={<PerformanceHistory />} />
-          <Route path="score/:date" element={<ScoreDetail />} />
-          {/* Redirect any other authenticated /user/* routes to the dashboard */}
-          <Route path="*" element={<Navigate to="home" replace />} />
-        </Route>
-      ) : (
-        // Unauthenticated user routes
-        <Route path="user/login" element={<UserLogin onLogin={handleLogin} />} />
-      )}
-      {/* Redirect any other /user/* route to the login page if not authenticated */}
-      <Route path="user/*" element={<Navigate to="/user/login" replace />} />
+      {/* Fallback for any other unmatched routes */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Nav, Form, Button, InputGroup } from 'react-bootstrap';
 import { toast } from 'react-toastify';
+import { login, register } from './authService';
 
 const UserLogin = ({ onLogin }) => {
     const [activeTab, setActiveTab] = useState('signup');
@@ -14,42 +15,37 @@ const UserLogin = ({ onLogin }) => {
         setSignupPassword(password);
     };
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
         if (!loginUsername || !loginPassword) {
             toast.warn("Please enter both username and password.");
             return;
         }
-        const quizUsers = JSON.parse(localStorage.getItem("quizUsers")) || [];
-        const foundUser = quizUsers.find(user => user.username.toLowerCase() === loginUsername.toLowerCase() && user.password === loginPassword);
-
-        if (!foundUser) {
-            toast.error("Invalid username or password. Please contact an admin for credentials.");
-            return;
+        try {
+            const user = await login(loginUsername, loginPassword);
+            if (user) {
+                onLogin(user);
+            }
+        } catch (error) {
+            // The service already showed a toast, but we could add more specific UI changes here.
         }
-        onLogin({ userId: foundUser.userId, username: foundUser.username });
     };
 
-    const handleRegister = (e) => {
+    const handleRegister = async (e) => {
         e.preventDefault();
         if (!signupUsername || !signupPassword) {
             toast.warn("Please enter a username and generate a password.");
             return;
         }
-
-        const userId = `user_${Date.now()}`;
-        let quizUsers = JSON.parse(localStorage.getItem("quizUsers")) || [];
-
-        if (quizUsers.some(user => user.username.toLowerCase() === signupUsername.toLowerCase())) {
-            toast.error("Username already exists. Please choose a different one.");
-            return;
+        try {
+            const newUser = await register(signupUsername, signupPassword);
+            if (newUser) {
+                toast.success(`User '${signupUsername}' created successfully! Logging you in...`);
+                onLogin(newUser);
+            }
+        } catch (error) {
+            // The service already showed a toast.
         }
-
-        quizUsers.push({ userId, username: signupUsername, password: signupPassword });
-        localStorage.setItem("quizUsers", JSON.stringify(quizUsers));
-
-        toast.success(`User '${signupUsername}' created successfully! Logging you in...`);
-        onLogin({ userId, username: signupUsername });
     };
 
     return (

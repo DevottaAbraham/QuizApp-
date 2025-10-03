@@ -9,6 +9,7 @@ const Dashboard = () => {
         totalUsers: [],
         publishedQuestions: [],
         topRanker: null,
+        questionsByAdmin: {},
     });
 
     useEffect(() => {
@@ -17,6 +18,13 @@ const Dashboard = () => {
             const totalUsers = JSON.parse(localStorage.getItem("quizUsers")) || [];
             const allQuestions = JSON.parse(localStorage.getItem("quizQuestions")) || [];
             const publishedQuestions = allQuestions.filter(q => q.status === 'published');
+
+            const questionsByAdmin = allQuestions.reduce((acc, q) => {
+                if (q.author) {
+                    acc[q.author] = (acc[q.author] || 0) + 1;
+                }
+                return acc;
+            }, {});
 
             const allScores = totalUsers.map(user => {
                 const history = JSON.parse(localStorage.getItem(`quizHistory_${user.userId}`)) || [];
@@ -33,7 +41,7 @@ const Dashboard = () => {
                 ? allScores.sort((a, b) => b.score - a.score)[0]
                 : null;
 
-            setStats({ activeUsers, totalUsers, publishedQuestions, topRanker });
+            setStats({ activeUsers, totalUsers, allQuestions, publishedQuestions, topRanker, questionsByAdmin });
         };
         updateStats(); // Initial load
 
@@ -108,36 +116,36 @@ const Dashboard = () => {
                 <Col md={4} className="mb-3 mb-md-0">
                     <Card className="text-center shadow-sm h-100">
                         <Card.Body>
-                            <Card.Title><i className="bi bi-patch-question-fill me-2"></i>Published Questions</Card.Title>
+                            <Card.Title><i className="bi bi-cloud-check-fill me-2"></i>Published Questions</Card.Title>
                             <Card.Text className="fs-1 fw-bold">{stats.publishedQuestions.length}</Card.Text>
                         </Card.Body>
                     </Card>
                 </Col>
             </Row>
             <Row className="mt-4">
+                
                 {/* <Col md={8}>
-                    <Card className="shadow-sm">
-                        <Card.Header as="h5">Active User List</Card.Header>
+                <Col md={4} className="mb-3 mb-md-0">
+                    <Card className="text-center shadow-sm h-100">
+                        <Card.Body>
+                            <Card.Title><i className="bi bi-collection-fill me-2"></i>Total Questions</Card.Title>
+                            <Card.Text className="fs-1 fw-bold">{stats.allQuestions.length}</Card.Text>
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col md={8}>
+                     <Card className="shadow-sm">
+                        <Card.Header as="h5"><i className="bi bi-person-workspace me-2"></i>Questions by Admin</Card.Header>
                         <ListGroup variant="flush" style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                            {stats.activeUsers.length > 0 ? stats.activeUsers.map(user => (
-                                <ListGroup.Item key={user.userId}>{user.username}</ListGroup.Item>
+                            {Object.keys(stats.questionsByAdmin).length > 0 ? Object.entries(stats.questionsByAdmin).map(([admin, count]) => (
+                                <ListGroup.Item key={admin} className="d-flex justify-content-between align-items-center">
+                                    {admin}
+                                    <span className="badge bg-primary rounded-pill">{count}</span>
+                                </ListGroup.Item>
                             )) : (
-                                <ListGroup.Item>No users are currently active.</ListGroup.Item>
+                                <ListGroup.Item>No questions have been created yet.</ListGroup.Item>
                             )}
                         </ListGroup>
-                    </Card>
-                </Col> */}
-                {/* <Col md={4}>
-                    <Card className="text-center shadow-sm h-100">
-                        <Card.Header as="h5"><i className="bi bi-trophy-fill me-2"></i>Leaderboard</Card.Header>
-                        <Card.Body className="d-flex flex-column justify-content-center">
-                            {stats.topRanker ? (
-                                <>
-                                    <Card.Title className="fs-4">{stats.topRanker.username}</Card.Title>
-                                    <Card.Text>Score: <span className="fs-2 fw-bold">{stats.topRanker.score}</span></Card.Text>
-                                </>
-                            ) : <p className="text-muted">No scores recorded yet.</p>}
-                        </Card.Body>
                     </Card>
                 </Col> */}
             </Row>

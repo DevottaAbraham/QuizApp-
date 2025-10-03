@@ -8,10 +8,10 @@ const MyScore = () => {
 
     useEffect(() => {
         const savedHistory = JSON.parse(localStorage.getItem(`quizHistory_${currentUser.userId}`)) || [];
-        // Sort by date descending to show the latest first
-        const sortedHistory = savedHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
-        setHistory(sortedHistory);
-    }, [currentUser.userId]);
+        // Sort by date descending to show the latest first and update state
+        savedHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
+        setHistory(savedHistory);
+    }, [currentUser.userId]); // This effect should only re-run if the user changes
 
     if (history.length === 0) {
         return <Alert variant="info">You have not completed any quizzes yet. Go to the "Today's Questions" page to start one!</Alert>;

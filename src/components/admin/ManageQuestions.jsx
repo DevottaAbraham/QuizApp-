@@ -80,7 +80,8 @@ const ManageQuestions = () => {
             navigate('/admin/publish'); // Redirect back to the publish queue
         } else {
             // Add new question
-            updatedQuestions = [...questions, { ...formState, id: Date.now() }];
+            const currentAdmin = JSON.parse(localStorage.getItem("currentAdmin"));
+            updatedQuestions = [...questions, { ...formState, id: Date.now(), author: currentAdmin.email }];
             toast.success('Question added successfully!');
         }
 

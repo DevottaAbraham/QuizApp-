@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Form, Button, Container, Row, Col, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import { loginAdmin } from './adminAuthService';
 import AlertToast from './AlertToast';
 
 const AdminLogin = ({ onLogin }) => {
@@ -26,18 +27,14 @@ const AdminLogin = ({ onLogin }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        const admins = JSON.parse(localStorage.getItem("quizAdmins")) || [];
-        const foundAdmin = admins.find( // Correctly find admin by email and password
-            admin => admin.email.toLowerCase() === email.toLowerCase() && admin.password === password
-        );
-
-        if (foundAdmin) {
-            // Pass the entire admin object on login
-            onLogin(foundAdmin);
-            navigate('/admin/dashboard'); // Redirect after successful login
-        } else {
-            setAlertInfo({ show: true, message: 'Invalid credentials. Please try again.', variant: 'danger' });
-        }
+        loginAdmin(email, password).then(admin => {
+            if (admin) {
+                onLogin(admin);
+            }
+           
+        }).catch(() => {
+            // The service already shows a toast for network errors.
+        });
     };
 
     return (
