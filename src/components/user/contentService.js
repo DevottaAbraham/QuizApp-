@@ -14,7 +14,6 @@ const defaultContent = {
  */
 export const getHomePageContent = async () => {
     // In a real app, this would be a fetch() call to your backend API.
-    // For now, we'll read from localStorage.
-    const savedContent = localStorage.getItem('userHomePageContent');
-    return savedContent ? JSON.parse(savedContent) : defaultContent;
+    // For now, we'll return the default content.
+    return defaultContent;
 };

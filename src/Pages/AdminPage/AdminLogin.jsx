@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Form, Button, Container, Row, Col, Alert } from 'react-bootstrap';
-import { loginAdmin } from './adminAuthService';
+import { loginAdmin } from '../../components/admin/adminAuthService';
 
 const AdminLogin = ({ onLogin }) => {
     const [email, setEmail] = useState('');

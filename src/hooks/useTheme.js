@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 
 export const useTheme = () => {
     const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
-
+  
     useEffect(() => {
         document.documentElement.setAttribute('data-bs-theme', theme);
         localStorage.setItem('theme', theme);
@@ -11,6 +11,7 @@ export const useTheme = () => {
     const toggleTheme = () => {
         setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
     };
+
 
     return { theme, toggleTheme };
 };

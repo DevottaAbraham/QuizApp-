@@ -1,125 +1,131 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate, Outlet } from 'react-router-dom';
-import AdminLogin from './components/admin/AdminLogin.jsx';
-import AdminPage from './Pages/AdminPage/AdminPage.jsx';
-import UserLogin from './components/user/UserLogin.jsx';
-import './components/user/UserLayout.css';
-import UserPage from './pages/UserPage.jsx';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
-// Custom hook for managing state with localStorage
-function useStorageState(key, defaultValue) {
-  const [state, setState] = useState(() => {
-    const savedState = localStorage.getItem(key);
-    try {
-      return savedState ? JSON.parse(savedState) : defaultValue;
-    } catch {
-      return defaultValue;
-    }
-  });
+// Auth and Layout
+import AdminLogin from './Pages/AdminPage/AdminLogin.jsx';
+import UserLogin from './Pages/UserPage/UserLogin.jsx';
 
-  useEffect(() => {
-    const handleStorageChange = (e) => {
-      if (e.key === key) {
-        try {
-          setState(e.newValue ? JSON.parse(e.newValue) : defaultValue);
-        } catch {
-          setState(defaultValue);
-        }
-      }
-    };
 
-    // 'storage' event is for changes in other tabs.
-    window.addEventListener('storage', handleStorageChange);
+import AdminProtectedRoute from './Pages/AdminPage/AdminProtectedRoute.jsx';
+import UserProtectedRoute from './Pages/UserPage/UserProtectedRoute.jsx';
 
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, [key, defaultValue]);
+// Admin Pages
+import Dashboard from './Pages/AdminPage/Dashboard.jsx';
+import ManageQuestions from './Pages/AdminPage/ManageQuestions.jsx';
+import UserManagement from './Pages/AdminPage/UserManagement.jsx';
+import ManageNotices from './Pages/AdminPage/ManageNotices.jsx';
+import AppearanceSettings from './Pages/AdminPage/AppearanceSettings.jsx';
+import ManageAdmins from './Pages/AdminPage/ManageAdmins.jsx';
+import PublishQueue from './Pages/AdminPage/PublishQueue.jsx';
+import QuestionHistory from './Pages/AdminPage/QuestionHistory.jsx';
+import Leaderboard from './Pages/AdminPage/Leaderboard.jsx';
+import ViewScores from './Pages/AdminPage/ViewScores.jsx';
+import ActiveUser from './Pages/AdminPage/ActiveUser.jsx';
 
-  const updateState = (newState) => {
-    if (newState) {
-      localStorage.setItem(key, JSON.stringify(newState));
-    } else {
-      localStorage.removeItem(key);
-    }
-    setState(newState);
-    // Dispatch a custom event for same-tab updates if needed elsewhere.
-    window.dispatchEvent(new StorageEvent('storage', { key }));
-  };
+// User Pages
+import Home from './Pages/UserPage/Home.jsx';
+import UserDashboard from './Pages/UserPage/UserDashboard.jsx';
+import Quiz from './Pages/UserPage/Quiz.jsx';
+import PerformanceHistory from './Pages/UserPage/PerformanceHistory.jsx';
+import ScoreDetail from './Pages/UserPage/ScoreDetail.jsx';
 
-  return [state, updateState];
-}
-
-// Protected Route Components
-const AdminProtectedRoute = ({ admin, onLogout, redirectPath = '/admin/login' }) => {
-  if (!admin) {
-    return <Navigate to={redirectPath} replace />;
-  }
-  return <AdminPage currentAdmin={admin} onLogout={onLogout} />;
-};
-
-const UserProtectedRoute = ({ user, onLogout, redirectPath = '/user/login' }) => {
-  if (!user) {
-    return <Navigate to={redirectPath} replace />;
-  }
-  return <UserPage currentUser={user} onLogout={onLogout} />;
-};
+// Error Pages
+import NotFound from './Pages/Error/NotFound.jsx';
 
 function App() {
-  const [currentUser, setCurrentUser] = useStorageState("currentUser", null);
-  const [currentAdmin, setCurrentAdmin] = useStorageState("currentAdmin", null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [currentAdmin, setCurrentAdmin] = useState(null);
+  const [activeUsers, setActiveUsers] = useState([]);
+  const [theme, setTheme] = useState('light');
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogin = (user) => {
-    const activeUsers = JSON.parse(localStorage.getItem("activeUsers")) || [];
-    if (!activeUsers.some(u => u.userId === user.userId)) {
-      activeUsers.push(user);
-      localStorage.setItem("activeUsers", JSON.stringify(activeUsers));
-    }
+    // Add user to active users list if not already present
+    setActiveUsers(prevUsers => {
+      if (!prevUsers.some(u => u.userId === user.userId)) {
+        return [...prevUsers, user];
+      }
+      return prevUsers;
+    });
     setCurrentUser(user);
     navigate('/user/home'); // Simplified redirection
   };
 
   const handleLogout = () => {
-    if (currentUser) {
-      const activeUsers = JSON.parse(localStorage.getItem("activeUsers")) || [];
-      const updatedActiveUsers = activeUsers.filter(u => u.userId !== currentUser.userId);
-      localStorage.setItem("activeUsers", JSON.stringify(updatedActiveUsers));
-    }
+    setActiveUsers(prevUsers => prevUsers.filter(u => u.userId !== currentUser?.userId));
     setCurrentUser(null);
-    navigate('/user/login');
   };
 
   const handleAdminLogin = (admin) => {
     setCurrentAdmin(admin);
-    navigate('/admin/dashboard');
+    navigate('/admin/dashboard'); // Explicitly navigate on login
   };
 
   const handleAdminLogout = () => {
     setCurrentAdmin(null);
-    navigate('/admin/login');
+  };
+
+// In App.jsx
+useEffect(() => {
+  document.body.setAttribute('data-bs-theme', theme);
+}, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(current => (current === 'light' ? 'dark' : 'light'));
   };
 
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/admin/login" replace />} />
+    <>
+      <Routes>
+        {/* Root path redirects to admin login by default */}
+        <Route path="/" element={<Navigate to="/admin/login" replace />} />
 
-      {/* Admin Routes */}
-      <Route path="admin/*" element={<AdminProtectedRoute admin={currentAdmin} onLogout={handleAdminLogout} />} />
-      <Route path="admin/login" element={
-        currentAdmin ? <Navigate to="/admin/dashboard" replace /> : <AdminLogin onLogin={handleAdminLogin} />
-      } />
+        {/* Public Admin Login Route */}
+        <Route path="admin/login" element={
+          currentAdmin ? <Navigate to="/admin/dashboard" replace /> : <AdminLogin onLogin={handleAdminLogin} />
+        } />
 
-      {/* User Routes */}
-      <Route path="user/*" element={<UserProtectedRoute user={currentUser} onLogout={handleLogout} />} />
-      <Route path="user/login" element={
-        currentUser ? <Navigate to="/user/home" replace /> : <UserLogin onLogin={handleLogin} />
-      } />
+        {/* Protected Admin Routes */}
+        <Route path="/admin" element={<AdminProtectedRoute admin={currentAdmin} onLogout={handleAdminLogout} theme={theme} toggleTheme={toggleTheme} />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="questions" element={<ManageQuestions />} />
+          <Route path="users" element={<UserManagement />} />
+          <Route path="notices" element={<ManageNotices />} />
+          <Route path="appearance" element={<AppearanceSettings />} />
+          {currentAdmin?.role === 'main' && <Route path="manage-admins" element={<ManageAdmins />} />}
+          <Route path="publish" element={<PublishQueue />} />
+          <Route path="history" element={<QuestionHistory />} />
+          <Route path="leaderboard" element={<Leaderboard />} />
+          <Route path="scores" element={<ViewScores />} />
+          <Route path="activeUser" element={<ActiveUser activeUsers={activeUsers} />} />
+        </Route>
 
-      {/* Fallback for any other unmatched routes */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* Public User Login Route */}
+        <Route path="user/login" element={
+          currentUser ? <Navigate to="/user/home" replace /> : <UserLogin onLogin={handleLogin} />
+        } />
+
+        {/* Protected User Routes */}
+        <Route path="/user" element={<UserProtectedRoute user={currentUser} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />}>
+          <Route index element={<Navigate to="home" replace />} />
+          <Route path="home" element={<Home currentUser={currentUser} />} />
+          <Route path="dashboard" element={<UserDashboard currentUser={currentUser} />} />
+          <Route path="quiz" element={<Quiz currentUser={currentUser} />} />
+          <Route path="score" element={<PerformanceHistory currentUser={currentUser} />} />
+          <Route path="score/:date" element={<ScoreDetail currentUser={currentUser} />} />
+          <Route path="*" element={<Navigate to="home" replace />} />
+        </Route>
+
+        {/* Fallback for any other unmatched routes */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
+    </>
   );
 }
 

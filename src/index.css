@@ -10,7 +10,7 @@ body {
 .navbar-brand { font-size: 1.3rem; }
 .navbar-toggler { border: none; }
 
-.card .border-left-primary { border-left: 0.25rem solid #4e73df !important; }
+.card .border-left-primary { border-left: 0.25rem solid #193486 !important; }
 .card .border-left-success { border-left: 0.25rem solid #1cc88a !important; }
 .card .border-left-info { border-left: 0.25rem solid #36b9cc !important; }
 .card .border-left-warning { border-left: 0.25rem solid #f6c23e !important; }

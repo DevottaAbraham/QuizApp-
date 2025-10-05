@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, Button, Row, Col, Form, Badge, Alert, ButtonGroup, Table, Modal } from 'react-bootstrap';
-import jsPDF from 'jspdf';
+import jsPDF from 'jspdf'; 
 import 'jspdf-autotable';
-import { NotoSansTamil } from '../../assets/fonts/NotoSansTamil';
+import { NotoSansTamil } from '../../assets/fonts/NotoSansTamil.js';
 
 
 const translations = {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Nav, Form, Button, InputGroup, FormControl } from 'react-bootstrap';
 import { toast } from 'react-toastify';
-import { login, register } from './authService';
+import { login, register } from '../../components/user/authService';
 
 const UserLogin = ({ onLogin }) => {
     const [activeTab, setActiveTab] = useState('signup');

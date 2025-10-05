@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Card, ListGroup, Modal, Form, Row, Col } from 'react-bootstrap';
+import { Button, Card, ListGroup, Modal, Form, Row, Col, Badge } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 

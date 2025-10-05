@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Table, Button, Card, Form, Row, Col, InputGroup } from 'react-bootstrap';
+import { Table, Button, Card, Form, Row, Col } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 
 const getUsers = () => JSON.parse(localStorage.getItem("quizUsers")) || [];

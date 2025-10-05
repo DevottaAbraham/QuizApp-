@@ -1,31 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, Outlet } from 'react-router-dom';
 import { Navbar, Nav, Container, Button, NavDropdown, Form } from 'react-bootstrap';
-import Dashboard from './Dashboard';
-import ManageQuestions from './ManageQuestions';
-import UserManagement from './UserManagement';
-import ManageNotices from './ManageNotices';
-import PublishQueue from './PublishQueue';
-import QuestionHistory from './QuestionHistory';
-import AppearanceSettings from './AppearanceSettings';
-import ManageAdmins from './ManageAdmins';
-import Leaderboard from './Leaderboard';
-import ActiveUser from './ActiveUser';
-import ViewScores from './ViewScores';
-import { useTheme } from '../../hooks/useTheme';
-
 /**
  * Renders the main application layout for a logged-in admin.
  * This component is wrapped in Routes and can safely use router hooks.
  */
-const AdminLayout = ({ currentAdmin, onLogout }) => {
+const AdminLayout = ({ currentAdmin, onLogout, theme, toggleTheme, children }) => {
   const [expanded, setExpanded] = useState(false);
-  const { theme, toggleTheme } = useTheme();
-  const navigate = useNavigate();
 
   const handleLogout = () => {
     onLogout();
-    navigate('/admin/login'); // Ensure redirection after logout
   };
   
   return (
@@ -55,43 +39,29 @@ const AdminLayout = ({ currentAdmin, onLogout }) => {
                 {/* Add other dropdown items here */}
               </NavDropdown>
             </Nav>
-            <div className="d-flex align-items-center mt-2 mt-lg-0">
-              <Navbar.Text className="me-3 d-none d-lg-block">
-                Welcome, {currentAdmin.email}
+            <Nav className="ms-auto align-items-center">
+              <Navbar.Text className="my-2 my-lg-0 me-lg-3">
+                Welcome, <span className="fw-bold">{currentAdmin?.email}</span>
               </Navbar.Text>
               <Form.Check
-                type="switch"
-                id="theme-switch-admin"
-                label={theme === 'light' ? <i className="bi bi-brightness-high-fill"></i> : <i className="bi bi-moon-stars-fill"></i>}
-                checked={theme === 'dark'}
-                onChange={toggleTheme}
-                className="text-white me-3"
+                  type="switch"
+                  id="admin-theme-switch"
+                  checked={theme === 'dark'}
+                  onChange={toggleTheme}
+                  label={theme === 'light' ? <i className="bi bi-brightness-high-fill fs-5"></i> : <i className="bi bi-moon-stars-fill fs-5"></i>}
+                  className="d-flex align-items-center my-2 my-lg-0 mx-lg-3"
+                  title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
               />
-              <Button variant="outline-light" size="sm" onClick={handleLogout} className="ms-lg-2">
-                <i className="bi bi-shield-slash-fill me-1"></i>Logout
+              <Button variant="outline-light" onClick={handleLogout} className="my-2 my-lg-0">
+                <i className="bi bi-shield-slash-fill me-1"></i> Logout
               </Button>
-            </div>
+            </Nav>
           </Navbar.Collapse>
         </Container>
       </Navbar>
 
       <main className="container-fluid mt-4">
-                <Routes>
-          <Route index element={<Dashboard />} /> {/* "index" handles both /admin and /admin/dashboard */}
-          <Route path="dashboard" element={<Dashboard />} /> {/* Add explicit route for dashboard */}
-          <Route path="questions" element={<ManageQuestions />} />
-          <Route path="users" element={<UserManagement />} />
-          <Route path="notices" element={<ManageNotices />} />
-          <Route path="appearance" element={<AppearanceSettings />} />
-          {/* Redirect from base /admin to dashboard if logged in */}
-          {currentAdmin?.role === 'main' && <Route path="manage-admins" element={<ManageAdmins />} />}
-          <Route path="publish" element={<PublishQueue />} />
-          <Route path="history" element={<QuestionHistory />} />
-          <Route path="leaderboard" element={<Leaderboard />} />
-          <Route path="scores" element={<ViewScores />} />
-          <Route path="activeUser" element={<ActiveUser />} />
-          {/* Add other admin routes here */}
-        </Routes>
+        <Outlet />
       </main>
     </>
   );

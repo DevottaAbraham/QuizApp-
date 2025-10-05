@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, ListGroup, Badge, Alert, Button } from 'react-bootstrap';
+import { Card, ListGroup, Badge, Alert, Button, Image } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 
 const UserDashboard = ({ currentUser }) => {

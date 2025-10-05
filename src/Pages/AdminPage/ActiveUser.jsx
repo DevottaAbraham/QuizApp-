@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, ListGroup, Alert } from 'react-bootstrap';
+import { Card, ListGroup, Alert, Spinner } from 'react-bootstrap';
 
 const ActiveUser = ({ activeUsers: initialActiveUsers = [] }) => {
     const [activeUsers, setActiveUsers] = useState([]);
