@@ -3,23 +3,27 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Card, ListGroup, Button, Alert, Badge, Row, Col, Spinner, ButtonGroup } from 'react-bootstrap';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { getScoreDetail } from '../../services/apiService';
 
 const ScoreDetail = ({ currentUser }) => {
-    const { date } = useParams(); // The date is used as a unique ID for the quiz result
+    const { id } = useParams(); // Use the persistent ID from the URL
     const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(true);
     const [lang, setLang] = useState('en'); // 'en' or 'ta'
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (!currentUser) return;
+        if (!currentUser || !id) return;
 
         setLoading(true);
-        const history = []; // TODO: Replace with an API call to fetch history
-        const foundResult = history.find(r => new Date(r.date).getTime() === parseInt(date));
-        setResult(foundResult);
-        setLoading(false);
-    }, [date, currentUser.userId]);
+        getScoreDetail(id)
+            .then(data => {
+                setResult(data);
+            })
+            .catch(error => console.error(`Failed to fetch score detail for ID ${id}:`, error))
+            .finally(() => setLoading(false));
+
+    }, [id, currentUser]);
 
     const handleDownloadPDF = () => {
         if (!result) return;
@@ -49,7 +53,7 @@ const ScoreDetail = ({ currentUser }) => {
             startY: 50,
         });
 
-        doc.save(`quiz-result-${currentUser.username}-${date}.pdf`);
+        doc.save(`quiz-result-${currentUser.username}-${id}.pdf`);
     };
 
     if (loading) {

@@ -4,21 +4,23 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 // Auth and Layout
-import AdminLogin from './Pages/AdminPage/AdminLogin.jsx';
+import AdminLogin from './components/admin/AdminLogin.jsx';
 import UserLogin from './Pages/UserPage/UserLogin.jsx';
 
-
-import AdminProtectedRoute from './Pages/AdminPage/AdminProtectedRoute.jsx';
+// Corrected import path for the protected route component
+import AdminProtectedRoute from './components/admin/AdminProtectedRoute.jsx';
 import UserProtectedRoute from './Pages/UserPage/UserProtectedRoute.jsx';
 
-// Admin Pages
-import Dashboard from './Pages/AdminPage/Dashboard.jsx';
-import ManageQuestions from './Pages/AdminPage/ManageQuestions.jsx';
-import UserManagement from './Pages/AdminPage/UserManagement.jsx';
-import ManageNotices from './Pages/AdminPage/ManageNotices.jsx';
-import AppearanceSettings from './Pages/AdminPage/AppearanceSettings.jsx';
-import ManageAdmins from './Pages/AdminPage/ManageAdmins.jsx';
-import PublishQueue from './Pages/AdminPage/PublishQueue.jsx';
+// Modern Admin Pages (from /components/admin)
+import Dashboard from './components/admin/Dashboard.jsx';
+import ManageQuestions from './components/admin/ManageQuestions.jsx';
+import UserManagement from './components/admin/UserManagement.jsx';
+import ManageNotices from './components/admin/ManageNotices.jsx';
+import AppearanceSettings from './components/admin/AppearanceSettings.jsx';
+import ManageAdmins from './components/admin/ManageAdmins.jsx';
+import PublishQueue from './components/admin/PublishQueue.jsx';
+
+// Legacy or other Admin Pages (from /Pages/AdminPage)
 import QuestionHistory from './Pages/AdminPage/QuestionHistory.jsx';
 import Leaderboard from './Pages/AdminPage/Leaderboard.jsx';
 import ViewScores from './Pages/AdminPage/ViewScores.jsx';
@@ -36,12 +38,25 @@ import NotFound from './Pages/Error/NotFound.jsx';
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
-  const [currentAdmin, setCurrentAdmin] = useState(null);
+  // Initialize admin state from localStorage
+  const [currentAdmin, setCurrentAdmin] = useState(() => {
+    const savedAdmin = localStorage.getItem('currentAdmin');
+    return savedAdmin ? JSON.parse(savedAdmin) : null;
+  });
   const [activeUsers, setActiveUsers] = useState([]);
   const [theme, setTheme] = useState('light');
 
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Effect to save admin to localStorage whenever it changes
+  useEffect(() => {
+    if (currentAdmin) {
+      localStorage.setItem('currentAdmin', JSON.stringify(currentAdmin));
+    } else {
+      localStorage.removeItem('currentAdmin');
+    }
+  }, [currentAdmin]);
 
   const handleLogin = (user) => {
     // Add user to active users list if not already present
@@ -62,10 +77,12 @@ function App() {
 
   const handleAdminLogin = (admin) => {
     setCurrentAdmin(admin);
+    // The useEffect will handle saving to localStorage
     navigate('/admin/dashboard'); // Explicitly navigate on login
   };
 
   const handleAdminLogout = () => {
+    // This will trigger the useEffect to clear localStorage
     setCurrentAdmin(null);
   };
 
@@ -97,12 +114,13 @@ useEffect(() => {
           <Route path="users" element={<UserManagement />} />
           <Route path="notices" element={<ManageNotices />} />
           <Route path="appearance" element={<AppearanceSettings />} />
-          {currentAdmin?.role === 'main' && <Route path="manage-admins" element={<ManageAdmins />} />}
+          {/* Only show the Manage Admins route if the logged-in admin is the main 'admin' user */}
+          {currentAdmin?.username === 'admin' && <Route path="manage-admins" element={<ManageAdmins />} />}
           <Route path="publish" element={<PublishQueue />} />
           <Route path="history" element={<QuestionHistory />} />
           <Route path="leaderboard" element={<Leaderboard />} />
           <Route path="scores" element={<ViewScores />} />
-          <Route path="activeUser" element={<ActiveUser activeUsers={activeUsers} />} />
+          <Route path="activeUser" element={<ActiveUser />} />
         </Route>
 
         {/* Public User Login Route */}

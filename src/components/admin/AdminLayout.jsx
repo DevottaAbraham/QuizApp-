@@ -26,9 +26,8 @@ const AdminLayout = ({ currentAdmin, onLogout, theme, toggleTheme, children }) =
                 <NavDropdown.Item as={Link} to="/admin/publish" onClick={() => setExpanded(false)}>Publish Queue</NavDropdown.Item>
                 <NavDropdown.Item as={Link} to="/admin/history" onClick={() => setExpanded(false)}>Question History</NavDropdown.Item>
               </NavDropdown>
-              {currentAdmin?.role === 'main' && (
-                <Nav.Link as={Link} to="/admin/manage-admins" onClick={() => setExpanded(false)}><i className="bi bi-person-badge-fill me-1"></i>Manage Admins</Nav.Link>
-              )}
+              {/* Only show the Manage Admins link if the logged-in admin is the main 'admin' user */}
+              {currentAdmin?.username === 'admin' && <Nav.Link as={Link} to="/admin/manage-admins" onClick={() => setExpanded(false)}><i className="bi bi-person-badge-fill me-1"></i>Manage Admins</Nav.Link>}
               <Nav.Link as={Link} to="/admin/users" onClick={() => setExpanded(false)}><i className="bi bi-person-gear me-1"></i>Users</Nav.Link>
               <Nav.Link as={Link} to="/admin/notices" onClick={() => setExpanded(false)}><i className="bi bi-clipboard-data-fill me-1"></i>Notices</Nav.Link>
               <Nav.Link as={Link} to="/admin/appearance" onClick={() => setExpanded(false)}><i className="bi bi-palette-fill me-1"></i>Appearance</Nav.Link>
@@ -41,7 +40,7 @@ const AdminLayout = ({ currentAdmin, onLogout, theme, toggleTheme, children }) =
             </Nav>
             <Nav className="ms-auto align-items-center">
               <Navbar.Text className="my-2 my-lg-0 me-lg-3">
-                Welcome, <span className="fw-bold">{currentAdmin?.email}</span>
+                Welcome, <span className="fw-bold">{currentAdmin?.username}</span>
               </Navbar.Text>
               <Form.Check
                   type="switch"

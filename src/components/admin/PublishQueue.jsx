@@ -1,19 +1,35 @@
-import React, { useState } from 'react';
-import { Button, Card, ListGroup, Modal, Form, Row, Col } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
+import { Button, Card, ListGroup, Modal, Form, Row, Col, Spinner, Alert } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-
-const getQuestions = () => JSON.parse(localStorage.getItem("quizQuestions")) || [];
-const saveQuestions = (questions) => {
-    localStorage.setItem("quizQuestions", JSON.stringify(questions));
-    window.dispatchEvent(new Event('storageUpdated')); // Notify other components
-};
+import * as api from '../../services/apiServices';
 
 const PublishQueue = () => {
-    const [questions, setQuestions] = useState(getQuestions());
+    const [questions, setQuestions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
     const [showPublishModal, setShowPublishModal] = useState(false);
     const [publishingInfo, setPublishingInfo] = useState({ id: null, isBulk: false });
     const [publishDates, setPublishDates] = useState({ releaseDate: '', disappearDate: '' });
+
+    const fetchQuestions = async () => {
+        try {
+            setLoading(true);
+            setError('');
+            const fetchedQuestions = await api.getQuestions();
+            setQuestions(fetchedQuestions);
+        } catch (err) {
+            setError('Failed to load questions. Please try again.');
+            // The apiService toast will also be shown.
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchQuestions();
+        // No need to listen for storage events anymore
+    }, []);
 
     const draftQuestions = questions.filter(q => q.status === 'draft');
 
@@ -38,48 +54,50 @@ const PublishQueue = () => {
         setPublishDates({ ...publishDates, [e.target.name]: e.target.value });
     };
 
-    const handleConfirmPublish = () => {
+    const handleConfirmPublish = async () => {
         if (!publishDates.releaseDate || !publishDates.disappearDate) {
             toast.warn("Please set both a release and disappear time.");
             return;
         }
 
-        // Check if this is the very first time any question is being published.
-        const wasFirstPublish = questions.every(q => q.status !== 'published');
-        let updatedQuestions;
-        if (publishingInfo.isBulk) {
-            const draftIds = draftQuestions.map(q => q.id);
-            updatedQuestions = questions.map(q =>
-                draftIds.includes(q.id)
-                    ? { ...q, status: 'published', ...publishDates }
-                    : q
-            );            
-        } else {
-            updatedQuestions = questions.map(q =>
-                q.id === publishingInfo.id
-                    ? { ...q, status: 'published', ...publishDates }
-                    : q
-            );
-        }
-        setQuestions(updatedQuestions);
-        saveQuestions(updatedQuestions);
-        
-        const message = publishingInfo.isBulk ? `${draftQuestions.length} questions have been published!` : "Question has been published!";
-        toast.info(message);
+        const wasFirstPublish = !questions.some(q => q.status === 'published');
 
-        // If it was the first publish, show the special alert.
-        if (wasFirstPublish) {
-            // Use a longer autoClose time to ensure the admin sees it.
-            setTimeout(() => toast.info(<div>The user quiz link is now available on your <Link to="/admin/dashboard">dashboard</Link>!</div>, { autoClose: 10000 }), 500);
+        try {
+            if (publishingInfo.isBulk) {
+                const updates = draftQuestions.map(q =>
+                    api.updateQuestion(q.id, { ...q, status: 'published', ...publishDates })
+                );
+                await Promise.all(updates);
+                toast.info(`${draftQuestions.length} questions have been published!`);
+            } else {
+                const questionToPublish = questions.find(q => q.id === publishingInfo.id);
+                if (questionToPublish) {
+                    await api.updateQuestion(publishingInfo.id, { ...questionToPublish, status: 'published', ...publishDates });
+                    toast.info("Question has been published!");
+                }
+            }
+
+            if (wasFirstPublish) {
+                setTimeout(() => toast.info(<div>The user quiz link is now available on your <Link to="/admin/dashboard">dashboard</Link>!</div>, { autoClose: 10000 }), 500);
+            }
+
+            await fetchQuestions(); // Re-fetch to get the latest state
+        } catch (err) {
+            console.error("Failed to publish question(s):", err);
+        } finally {
+            handleModalClose();
         }
-        handleModalClose();
     };
 
-    const handleDelete = (id) => {
-        const updatedQuestions = questions.filter(q => q.id !== id);
-        setQuestions(updatedQuestions);
-        saveQuestions(updatedQuestions);
-        toast.error('Draft question deleted.');
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this draft question?')) return;
+        try {
+            await api.deleteQuestion(id);
+            setQuestions(questions.filter(q => q.id !== id));
+            toast.success('Draft question deleted.');
+        } catch (err) {
+            console.error("Failed to delete question:", err);
+        }
     };
 
     return (
@@ -91,8 +109,10 @@ const PublishQueue = () => {
                         <i className="bi bi-cloud-upload-fill me-1"></i> Publish All
                     </Button>
                 </Card.Header>
+                {loading && <Card.Body className="text-center"><Spinner animation="border" /></Card.Body>}
+                {error && <Alert variant="danger" className="m-3">{error}</Alert>}
                 <ListGroup variant="flush">
-                    {draftQuestions.length > 0 ? draftQuestions.map(q => (
+                    {!loading && draftQuestions.length > 0 ? draftQuestions.map(q => (
                         <ListGroup.Item key={q.id} className="d-flex flex-column flex-md-row justify-content-between align-items-md-center">
                             <div className="mb-2 mb-md-0">
                                 <strong>{q.text_en}</strong>
@@ -110,8 +130,8 @@ const PublishQueue = () => {
                                 </Button>
                             </div>
                         </ListGroup.Item>
-                    )) : (
-                        <ListGroup.Item>There are no draft questions to publish.</ListGroup.Item>
+                    )) : !loading && (
+                        <ListGroup.Item>There are no draft questions to publish. <Link to="/admin/questions">Add one now</Link>.</ListGroup.Item>
                     )}
                 </ListGroup>
             </Card>

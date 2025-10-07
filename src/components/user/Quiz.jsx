@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, Button, Form, ProgressBar, Alert, ButtonGroup, Spinner } from 'react-bootstrap';
 import { toast } from 'react-toastify';
+import { getActiveQuiz, submitQuiz } from '../../services/apiService';
 
 const Quiz = ({ currentUser }) => {
     const [questions, setQuestions] = useState([]);
@@ -24,50 +25,48 @@ const Quiz = ({ currentUser }) => {
         } else {
             toast.success("Quiz completed! Navigating to your score...");
         }
-        
+
         const finalScore = finalAnswers.filter(a => a.isCorrect).length;
         const quizResult = {
             score: finalScore,
             total: questions.length,
             answers: finalAnswers,
             date: new Date().toISOString(),
-            quizId: questions.map(q => q.id).sort().join('-'), // Unique ID for this set of questions
+            quizId: questions[0]?.quizSetId || 'unknown-quiz', // Use a consistent ID from the backend
         };
-        // TODO: Replace with an API call to save the quiz result to the backend.
-        // For now, we can log it to the console.
-        console.log("Quiz Result to be saved:", quizResult);
 
-        window.dispatchEvent(new Event('storageUpdated')); // Notify dashboard of new score
-
-        // Immediately navigate to the score detail page for the quiz just taken.
-        const timestamp = new Date(quizResult.date).getTime();
-        navigate(`/user/score/${timestamp}`);
+        // API call to save the quiz result
+        submitQuiz(quizResult)
+            .then(savedResult => {
+                window.dispatchEvent(new Event('storageUpdated')); // Notify other components of new score
+                // Navigate to the score detail page for the quiz just taken.
+                // The backend should return the saved result with a persistent ID.
+                navigate(`/user/score/${savedResult.id || new Date(savedResult.date).getTime()}`);
+            })
+            .catch(error => {
+                // The apiService already shows a toast, but we can add a fallback.
+                console.error("Failed to submit quiz:", error);
+                navigate('/user/score'); // Navigate to history even if save fails
+            });
     };
 
     useEffect(() => {
         if (!currentUser) return;
 
-        // Fetch and filter questions
-        const allQuestions = []; // TODO: Replace with an API call to fetch questions.
-        const now = new Date();
-        const activeQuestions = allQuestions.filter(q => {
-            const release = new Date(q.releaseDate);
-            const disappear = new Date(q.disappearDate);
-            return q.status === 'published' && now >= release && now < disappear;
-        });
-
-        if (activeQuestions.length > 0) {
-            const quizId = activeQuestions.map(q => q.id).sort().join('-');
-            // TODO: Replace with an API call to check if the user has already taken this quiz.
-            const existingResult = null; 
-
-            if (existingResult) {
-                setCompletedQuizInfo({ date: existingResult.date });
-            } else {
+        getActiveQuiz()
+            .then(data => {
+                const { activeQuestions, completedQuiz } = data;
+                if (completedQuiz) {
+                    setCompletedQuizInfo({ date: completedQuiz.date, id: completedQuiz.id });
+                } else if (activeQuestions && activeQuestions.length > 0) {
                 setQuestions(activeQuestions);
             }
-        }
-        setLoading(false);
+            }).catch(error => {
+                console.error("Failed to fetch active quiz:", error);
+                // The apiService will show a toast, so we just need to stop loading.
+            }).finally(() => {
+                setLoading(false);
+            });
 
         // Prevent user from leaving the page
         const handleBeforeUnload = (e) => {
@@ -189,7 +188,7 @@ const Quiz = ({ currentUser }) => {
     if (completedQuizInfo) {
         return (
             <Alert variant="warning">
-                You have already completed this quiz. <Link to={`/user/score/${new Date(completedQuizInfo.date).getTime()}`}>View your score.</Link>
+                You have already completed this quiz. <Link to={`/user/score/${completedQuizInfo.id || new Date(completedQuizInfo.date).getTime()}`}>View your score.</Link>
             </Alert>
         );
     }

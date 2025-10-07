@@ -1,73 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Col, Row, ListGroup, InputGroup, Button, Form } from 'react-bootstrap';
+import { Card, Col, Row, InputGroup, Button, Form, Spinner, Alert } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { getDashboardStats } from '../../services/apiServices';
 
 const Dashboard = () => {
-    const [stats, setStats] = useState({
-        activeUsers: [],
-        totalUsers: [],
-        publishedQuestions: [],
-        topRanker: null,
-        questionsByAdmin: {},
-    });
+    const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
-        const updateStats = (e) => {
-            const activeUsers = JSON.parse(localStorage.getItem("activeUsers")) || [];
-            const totalUsers = JSON.parse(localStorage.getItem("quizUsers")) || [];
-            const allQuestions = JSON.parse(localStorage.getItem("quizQuestions")) || [];
-            const publishedQuestions = allQuestions.filter(q => q.status === 'published');
-
-            const questionsByAdmin = allQuestions.reduce((acc, q) => {
-                if (q.author) {
-                    acc[q.author] = (acc[q.author] || 0) + 1;
-                }
-                return acc;
-            }, {});
-
-            const allScores = totalUsers.map(user => {
-                const history = JSON.parse(localStorage.getItem(`quizHistory_${user.userId}`)) || [];
-                if (history.length === 0) return null;
-                // Ensure we only consider entries with a valid score
-                const scores = history.map(h => h.score).filter(s => typeof s === 'number');
-                if (scores.length === 0) return null;
-
-                const bestScore = Math.max(...scores);
-                return { username: user.username, score: bestScore, userId: user.userId };
-            }).filter(Boolean);
-
-            const topRanker = allScores.length > 0
-                ? allScores.sort((a, b) => b.score - a.score)[0]
-                : null;
-
-            setStats({ activeUsers, totalUsers, allQuestions, publishedQuestions, topRanker, questionsByAdmin });
+        const fetchStats = async () => {
+            try {
+                setLoading(true);
+                const data = await getDashboardStats();
+                setStats(data);
+            } catch (err) {
+                setError('Failed to load dashboard statistics.');
+                // The apiService will also show a toast.
+            } finally {
+                setLoading(false);
+            }
         };
-        updateStats(); // Initial load
-
-        // Listen for custom event that signals a storage change
-        window.addEventListener('storageUpdated', updateStats);
-
-        return () => {
-            // Cleanup the event listener
-            window.removeEventListener('storageUpdated', updateStats);
-        };
+        fetchStats();
     }, []);
 
     const userQuizLink = `${window.location.origin}/user/login`;
 
     const handleCopyLink = () => {
         navigator.clipboard.writeText(userQuizLink).then(() => {
-            toast.success('Quiz link copied to clipboard!');
+            toast.info('Quiz link copied to clipboard!');
         });
     };
+
+    if (loading) {
+        return <Spinner animation="border" role="status"><span className="visually-hidden">Loading...</span></Spinner>;
+    }
+
+    if (error) {
+        return <Alert variant="danger">{error}</Alert>;
+    }
 
     return (
         <div>
             <h2 className="mb-4">Admin Dashboard</h2>
 
             {/* The User Quiz Link card is now prominently displayed at the top when available. */}
-            {stats.publishedQuestions.length > 0 ? (
+            {stats && stats.publishedQuestions > 0 ? (
                 <Row className="mb-4">
                     <Col>
                         <Card className="shadow-sm bg-body-tertiary border-primary">
@@ -76,7 +55,7 @@ const Dashboard = () => {
                                 <p>Share this permanent link with users to log in and access the quiz. It is now active because you have published questions.</p>
                                 <InputGroup>
                                     <Form.Control readOnly value={userQuizLink} />
-                                    <Button variant="outline-primary" onClick={handleCopyLink}><i className="bi bi-clipboard-check-fill me-1"></i> Copy Link</Button>
+                                    <Button variant="primary" onClick={handleCopyLink}><i className="bi bi-clipboard-check-fill me-1"></i> Copy Link</Button>
                                 </InputGroup>
                             </Card.Body>
                         </Card>
@@ -100,16 +79,16 @@ const Dashboard = () => {
                 <Col md={4} className="mb-3 mb-md-0">
                     <Card className="text-center shadow-sm h-100">
                         <Card.Body>
-                            <Card.Title><i className="bi bi-person-check-fill me-2"></i>Active Users</Card.Title>
-                            <Card.Text className="fs-1 fw-bold">{stats.activeUsers.length}</Card.Text>
+                            <Card.Title>Total Registered Users</Card.Title>
+                            <Card.Text className="fs-1 fw-bold">{stats?.totalUsers ?? 0}</Card.Text>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={4} className="mb-3 mb-md-0">
-                    <Card className="text-center shadow-sm mb-3">
+                    <Card className="text-center shadow-sm h-100">
                         <Card.Body>
-                            <Card.Title>Total Registered Users</Card.Title>
-                            <Card.Text className="fs-1 fw-bold">{stats.totalUsers.length}</Card.Text>
+                            <Card.Title><i className="bi bi-journal-check me-2"></i>Total Questions</Card.Title>
+                            <Card.Text className="fs-1 fw-bold">{stats?.totalQuestions ?? 0}</Card.Text>
                         </Card.Body>
                     </Card>
                 </Col>
@@ -117,37 +96,10 @@ const Dashboard = () => {
                     <Card className="text-center shadow-sm h-100">
                         <Card.Body>
                             <Card.Title><i className="bi bi-cloud-check-fill me-2"></i>Published Questions</Card.Title>
-                            <Card.Text className="fs-1 fw-bold">{stats.publishedQuestions.length}</Card.Text>
+                            <Card.Text className="fs-1 fw-bold">{stats?.publishedQuestions ?? 0}</Card.Text>
                         </Card.Body>
                     </Card>
                 </Col>
-            </Row>
-            <Row className="mt-4">
-                
-                {/* <Col md={8}>
-                <Col md={4} className="mb-3 mb-md-0">
-                    <Card className="text-center shadow-sm h-100">
-                        <Card.Body>
-                            <Card.Title><i className="bi bi-collection-fill me-2"></i>Total Questions</Card.Title>
-                            <Card.Text className="fs-1 fw-bold">{stats.allQuestions.length}</Card.Text>
-                        </Card.Body>
-                    </Card>
-                </Col>
-                <Col md={8}>
-                     <Card className="shadow-sm">
-                        <Card.Header as="h5"><i className="bi bi-person-workspace me-2"></i>Questions by Admin</Card.Header>
-                        <ListGroup variant="flush" style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                            {Object.keys(stats.questionsByAdmin).length > 0 ? Object.entries(stats.questionsByAdmin).map(([admin, count]) => (
-                                <ListGroup.Item key={admin} className="d-flex justify-content-between align-items-center">
-                                    {admin}
-                                    <span className="badge bg-primary rounded-pill">{count}</span>
-                                </ListGroup.Item>
-                            )) : (
-                                <ListGroup.Item>No questions have been created yet.</ListGroup.Item>
-                            )}
-                        </ListGroup>
-                    </Card>
-                </Col> */}
             </Row>
         </div>
     );

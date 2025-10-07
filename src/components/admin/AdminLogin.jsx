@@ -3,33 +3,21 @@ import { Card, Form, Button, Container, Row, Col, Alert } from 'react-bootstrap'
 import { loginAdmin } from './adminAuthService';
 
 const AdminLogin = ({ onLogin }) => {
-    const [email, setEmail] = useState('');
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     
     useEffect(() => {
-        // Seed the first main admin if no admins exist
-        const admins = JSON.parse(localStorage.getItem("quizAdmins"));
-        if (!admins || admins.length === 0) {
-            const initialAdmins = [
-                { email: 'main@email.com', password: 'password', role: 'main' },
-                { email: 'admin1@email.com', password: 'password', role: 'admin' },
-                { email: 'admin2@email.com', password: 'password', role: 'admin' },
-                { email: 'admin3@email.com', password: 'password', role: 'admin' },
-                { email: 'admin4@email.com', password: 'password', role: 'admin' },
-            ];
-            localStorage.setItem("quizAdmins", JSON.stringify(initialAdmins));
-        }
+        // The default admin is now created by the backend's DataInitializer.
+        // No need to seed admins on the frontend anymore.
     }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        try {
-            const admin = await loginAdmin(email, password);
-            if (admin) {
-                onLogin(admin);
-            }
-        } catch (error) {
-            // Errors (like invalid credentials) are handled by the loginAdmin service, which shows a toast.
+        // Use the username and password to log in.
+        // loginAdmin will show a toast on failure and return null.
+        const admin = await loginAdmin(username, password);
+        if (admin) {
+            onLogin(admin);
         }
     };
 
@@ -42,14 +30,14 @@ const AdminLogin = ({ onLogin }) => {
                         <Card.Header as="h5" className="text-center bg-dark text-white">Admin Login</Card.Header>
                         <Card.Body className="p-4">
                             <Form onSubmit={handleSubmit}>
-                                <Form.Group className="mb-3" controlId="adminEmail">
-                                    <Form.Label>Email Address</Form.Label>
+                                <Form.Group className="mb-3" controlId="adminUsername">
+                                    <Form.Label>Admin Username</Form.Label>
                                     <Form.Control
-                                        type="email"
-                                        placeholder="Enter email"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        autoComplete="email"
+                                        type="text"
+                                        placeholder="Enter admin username"
+                                        value={username}
+                                        onChange={(e) => setUsername(e.target.value)}
+                                        autoComplete="username"
                                         required
                                     />
                                 </Form.Group>
@@ -68,9 +56,9 @@ const AdminLogin = ({ onLogin }) => {
                                 <Button variant="primary" type="submit" className="w-100">Login</Button>
                             </Form>
                             <Alert variant="info" className="mt-4 small">
-                                <strong>Demo Credentials:</strong><br />
-                                Email: <code>admin1@email.com</code><br />
-                                Password: <code>password</code>
+                                <strong>Default Admin Credentials:</strong><br />
+                                Username: <code>admin</code><br />
+                                Password: <code>adminpassword</code>
                             </Alert>
                         </Card.Body>
                     </Card>

@@ -1,31 +1,32 @@
 import { toast } from 'react-toastify';
+import * as api from '../../services/apiServices';
 
 // This is now a mock service that uses localStorage.
 // const API_URL = import.meta.env.VITE_API_URL;
 
 /**
- * Simulates logging in an admin by checking localStorage.
- * @param {string} email The admin's email.
+ * Logs in an admin by calling the backend API.
+ * @param {string} username The admin's username.
  * @param {string} password The admin's password.
  * @returns {Promise<Object|null>} A promise that resolves with the admin object or null if login fails.
  */
-export const loginAdmin = async (email, password) => {
+export const loginAdmin = async (username, password) => {
     try {
-        const admins = JSON.parse(localStorage.getItem("quizAdmins")) || [];
-        const foundAdmin = admins.find(
-            admin => admin.email.toLowerCase() === email.toLowerCase() && admin.password === password
-        );
-
-        if (foundAdmin) {
-            // Return the found admin object, which includes email and role
-            return foundAdmin;
+        // We use the same login endpoint for both users and admins.
+        const adminData = await api.login(username, password);
+        
+        // The backend controls who is an admin. We check the role here.
+        if (adminData && adminData.role === 'ADMIN') {
+            return adminData;
         } else {
-            toast.error("Invalid credentials. Please try again.");
+            // If the user is not an admin, deny access.
+            toast.error("Access Denied: You do not have admin privileges.");
             return null;
         }
     } catch (error) {
-        console.error("Admin login error:", error);
-        toast.error("An unexpected error occurred during login.");
-        throw error;
+        // The apiService will show a toast for network or credential errors.
+        // We catch the error here so it doesn't propagate up and crash the component.
+        console.error("Admin login API error:", error);
+        return null; // Return null on any kind of login failure.
     }
 };

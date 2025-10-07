@@ -1,41 +1,43 @@
 import React, { useState, useEffect } from 'react';
-import { Card, ListGroup, Badge, Alert, Button } from 'react-bootstrap';
+import { Card, ListGroup, Badge, Alert, Button, Spinner } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+import { getNotices, dismissNotice, dismissAllNotices } from '../../services/apiService';
 
 const UserDashboard = ({ currentUser }) => {
     const [notices, setNotices] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (!currentUser) return;
 
-        const loadNotices = () => {
-            const allNotices = []; // TODO: Replace with an API call to fetch notices
-
-            // This logic will need to be adapted once you have a backend
-            const relevantNotices = allNotices
-                .map(notice => ({
-                    ...notice,
-                    isNew: true // Placeholder
-                }));
-            
-            setNotices(relevantNotices.sort((a, b) => b.id - a.id));
-        };
-
-        loadNotices();
-        // In the future, you might use WebSockets or polling to update notices
-    }, [currentUser]);
+        setLoading(true);
+        getNotices()
+            .then(data => {
+                // Assuming the API returns notices sorted by date
+                setNotices(data);
+            })
+            .catch(error => console.error("Failed to fetch notices:", error))
+            .finally(() => setLoading(false));
+    }, [currentUser.userId]);
 
     const handleDismiss = (noticeId) => {
-        // TODO: Replace with an API call to mark the notice as dismissed for the user.
-        console.log(`Dismissing notice ${noticeId} for user ${currentUser.userId}`);
-        setNotices(notices.filter(n => n.id !== noticeId));
+        // Optimistically remove the notice from the UI
+        setNotices(prevNotices => prevNotices.filter(n => n.id !== noticeId));
+        // Call the API to mark the notice as dismissed
+        dismissNotice(noticeId).catch(error => {
+            // If the API call fails, we might want to add the notice back or show an error
+            console.error(`Failed to dismiss notice ${noticeId}:`, error);
+            // For simplicity, we're not adding it back here, but the API service will show a toast.
+        });
     };
 
     const handleDismissAll = () => {
-        const noticeIdsToDismiss = notices.map(n => n.id);
-        // TODO: Replace with an API call to dismiss all notices for the user.
-        console.log(`Dismissing all notices for user ${currentUser.userId}:`, noticeIdsToDismiss);
+        // Optimistically clear notices from the UI
         setNotices([]);
+        // Call the API to dismiss all notices
+        dismissAllNotices().catch(error => {
+            console.error("Failed to dismiss all notices:", error);
+        });
     };
 
     const formatDateTime = (dateString) => {
@@ -71,22 +73,28 @@ const UserDashboard = ({ currentUser }) => {
                     )}
                 </Card.Header>
                 <ListGroup variant="flush" style={{ maxHeight: '50vh', overflowY: 'auto' }}>
-                    {notices.length > 0 ? notices.map(notice => (
-                        <ListGroup.Item key={notice.id} className={`py-3 ${notice.isNew ? 'bg-primary-subtle' : ''}`}>
-                            <div className="d-flex justify-content-between align-items-start">
-                                <h6 className="mb-1">{notice.title}</h6>
-                                <div>
-                                    {notice.isNew && <Badge bg="primary" pill className="me-2">New</Badge>}
-                                    <Button variant="outline-secondary" size="sm" className="border-0 p-0" onClick={() => handleDismiss(notice.id)} title="Dismiss notice">
-                                        <i className="bi bi-x-lg"></i>
-                                    </Button>
-                                </div>
-                            </div>
-                            {notice.imageUrl && <img src={notice.imageUrl} alt="Notice" className="img-fluid rounded my-2" style={{ maxHeight: '150px' }} />}
-                            <p className="mb-1">{notice.content}</p>
-                            <small className="text-muted">Posted on: {formatDateTime(notice.id)}</small>
+                    {loading ? (
+                        <ListGroup.Item className="text-center">
+                            <Spinner animation="border" size="sm" /> Loading notices...
                         </ListGroup.Item>
-                    )) : (
+                    ) : notices.length > 0 ? (
+                        notices.map(notice => (
+                            <ListGroup.Item key={notice.id} className={`py-3 ${notice.isNew ? 'bg-primary-subtle' : ''}`}>
+                                <div className="d-flex justify-content-between align-items-start">
+                                    <h6 className="mb-1">{notice.title}</h6>
+                                    <div>
+                                        {notice.isNew && <Badge bg="primary" pill className="me-2">New</Badge>}
+                                        <Button variant="outline-secondary" size="sm" className="border-0 p-0" onClick={() => handleDismiss(notice.id)} title="Dismiss notice">
+                                            <i className="bi bi-x-lg"></i>
+                                        </Button>
+                                    </div>
+                                </div>
+                                {notice.imageUrl && <img src={notice.imageUrl} alt="Notice" className="img-fluid rounded my-2" style={{ maxHeight: '150px' }} />}
+                                <p className="mb-1">{notice.content}</p>
+                                <small className="text-muted">Posted on: {formatDateTime(notice.date || notice.id)}</small>
+                            </ListGroup.Item>
+                        ))
+                    ) : (
                         <ListGroup.Item>
                             <Alert variant="secondary" className="text-center m-0">
                                 No notices at the moment.

@@ -1,12 +1,12 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import AdminLayout from '../../components/admin/AdminLayout.jsx';
+import AdminPage from './AdminPage';
 
-const AdminProtectedRoute = ({ admin, onLogout, theme, toggleTheme, redirectPath = '/admin/login' }) => {
+const AdminProtectedRoute = ({ admin, onLogout, redirectPath = '/admin/login' }) => {
     if (!admin) {
         return <Navigate to={redirectPath} replace />;
     }
-    return <AdminLayout currentAdmin={admin} onLogout={onLogout} theme={theme} toggleTheme={toggleTheme} children={<Outlet />} />;
+    return <AdminPage admin={admin} onLogout={onLogout} />;
 };
 
 export default AdminProtectedRoute;
