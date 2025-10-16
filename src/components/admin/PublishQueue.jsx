@@ -10,7 +10,9 @@ const PublishQueue = () => {
     const [error, setError] = useState('');
     const [showPublishModal, setShowPublishModal] = useState(false);
     const [publishingInfo, setPublishingInfo] = useState({ id: null, isBulk: false });
+
     const [publishDates, setPublishDates] = useState({ releaseDate: '', disappearDate: '' });
+    const [isPublishing, setIsPublishing] = useState(false);
 
     const fetchQuestions = async () => {
         try {
@@ -60,19 +62,20 @@ const PublishQueue = () => {
             return;
         }
 
+        setIsPublishing(true);
         const wasFirstPublish = !questions.some(q => q.status === 'published');
 
         try {
             if (publishingInfo.isBulk) {
-                const updates = draftQuestions.map(q =>
-                    api.updateQuestion(q.id, { ...q, status: 'published', ...publishDates })
-                );
-                await Promise.all(updates);
-                toast.info(`${draftQuestions.length} questions have been published!`);
+                const questionIds = draftQuestions.map(q => q.id);
+                // Use the new bulk publish endpoint
+                await api.publishQuestion('bulk', { questionIds, ...publishDates });
+                toast.info(`${questionIds.length} questions have been published!`);
             } else {
                 const questionToPublish = questions.find(q => q.id === publishingInfo.id);
                 if (questionToPublish) {
-                    await api.updateQuestion(publishingInfo.id, { ...questionToPublish, status: 'published', ...publishDates });
+                    // Use the new, dedicated publish endpoint for single questions
+                    await api.publishQuestion(publishingInfo.id, publishDates);
                     toast.info("Question has been published!");
                 }
             }
@@ -85,6 +88,7 @@ const PublishQueue = () => {
         } catch (err) {
             console.error("Failed to publish question(s):", err);
         } finally {
+            setIsPublishing(false);
             handleModalClose();
         }
     };
@@ -160,7 +164,13 @@ const PublishQueue = () => {
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={handleModalClose}>Cancel</Button>
-                    <Button variant="primary" onClick={handleConfirmPublish}>Confirm & Publish</Button>
+                    <Button variant="primary" onClick={handleConfirmPublish} disabled={isPublishing}>
+                        {isPublishing ? (
+                            <><Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Publishing...</>
+                        ) : (
+                            'Confirm & Publish'
+                        )}
+                    </Button>
                 </Modal.Footer>
             </Modal>
         </>

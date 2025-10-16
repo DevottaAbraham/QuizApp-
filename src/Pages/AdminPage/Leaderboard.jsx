@@ -1,37 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Button, Badge } from 'react-bootstrap';
+import { Card, Table, Button, Spinner, Alert } from 'react-bootstrap';
 import pptxgen from "pptxgenjs";
+import * as api from '../../services/apiServices';
 
 const Leaderboard = () => {
     const [sortedScores, setSortedScores] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
-        const calculateScores = () => {
-            const allUsers = JSON.parse(localStorage.getItem("quizUsers")) || [];
-            const allScores = allUsers.map(user => {
-                const history = JSON.parse(localStorage.getItem(`quizHistory_${user.userId}`)) || [];
-                if (history.length === 0) return null;
-
-                // Find the best score from the user's history
-                const scores = history.map(h => h.score).filter(s => typeof s === 'number');
-                if (scores.length === 0) return null;
-
-                const bestScore = Math.max(...scores);
-                return {
-                    userId: user.userId, username: user.username, score: bestScore
-                };
-            }).filter(Boolean);
-
-            setSortedScores(allScores.sort((a, b) => b.score - a.score));
+        const fetchLeaderboard = async () => {
+            try {
+                setLoading(true);
+                setError('');
+                const leaderboardData = await api.getLeaderboard();
+                setSortedScores(leaderboardData);
+            } catch (err) {
+                setError('Failed to load leaderboard data.');
+            } finally {
+                setLoading(false);
+            }
         };
 
-        calculateScores();
-
-        window.addEventListener('storageUpdated', calculateScores);
-
-        return () => {
-            window.removeEventListener('storageUpdated', calculateScores);
-        };
+        fetchLeaderboard();
     }, []);
 
     const handleDownloadPPT = () => {
@@ -41,8 +32,8 @@ const Leaderboard = () => {
         slide.addText("Quiz Leaderboard", { x: 1, y: 1, fontSize: 24, bold: true, color: "363636" });
 
         const tableData = [
-            [{ text: "Rank", options: { bold: true } }, { text: "User ID", options: { bold: true } }, { text: "Username", options: { bold: true } }, { text: "Score", options: { bold: true } }],
-            ...sortedScores.map((user, index) => [index + 1, user.userId, user.username, user.score])
+            [{ text: "Rank", options: { bold: true } }, { text: "Username", options: { bold: true } }, { text: "Score", options: { bold: true } }],
+            ...sortedScores.map((user, index) => [index + 1, user.username, user.score])
         ];
 
         slide.addTable(tableData, { x: 1, y: 2, w: 8, rowH: 0.5 });
@@ -59,21 +50,27 @@ const Leaderboard = () => {
                 </Button>
             </Card.Header>
             <Card.Body>
-                <Table striped bordered hover responsive>
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>User ID</th>
-                            <th>Username</th>
-                            <th>Score</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {sortedScores.map((user, index) => (
-                            <tr key={user.userId}><td>{index + 1}</td><td><code>{user.userId}</code></td><td>{user.username}</td><td>{user.score}</td></tr>
-                        ))}
-                    </tbody>
-                </Table>
+                {loading ? (
+                    <div className="text-center"><Spinner animation="border" /></div>
+                ) : error ? (
+                    <Alert variant="danger">{error}</Alert>
+                ) : (
+                    <Table striped bordered hover responsive>
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Username</th>
+                                <th>Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {sortedScores.map((user, index) => (
+                                <tr key={user.username}><td>{index + 1}</td><td>{user.username}</td><td>{user.score}</td></tr>
+                            ))}
+                        </tbody>
+                    </Table>
+                )}
+                {!loading && !error && sortedScores.length === 0 && <Alert variant="info">The leaderboard is empty.</Alert>}
             </Card.Body>
         </Card>
     );

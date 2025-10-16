@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Card, Button, Form, ProgressBar, Alert, ButtonGroup, Spinner } from 'react-bootstrap';
 import { toast } from 'react-toastify';
+import * as api from '../../services/apiServices';
 
 const Quiz = ({ currentUser }) => {
     const [questions, setQuestions] = useState([]);
@@ -25,49 +26,45 @@ const Quiz = ({ currentUser }) => {
             toast.success("Quiz completed! Navigating to your score...");
         }
         
-        const finalScore = finalAnswers.filter(a => a.isCorrect).length;
         const quizResult = {
-            score: finalScore,
-            total: questions.length,
+            score: finalAnswers.filter(a => a.isCorrect).length,
+            totalQuestions: questions.length,
             answers: finalAnswers,
-            date: new Date().toISOString(),
-            quizId: questions.map(q => q.id).sort().join('-'), // Unique ID for this set of questions
+            quizTimestamp: new Date().toISOString(),
         };
-        // TODO: Replace with an API call to save the quiz result to the backend.
-        // For now, we can log it to the console.
-        console.log("Quiz Result to be saved:", quizResult);
 
-        window.dispatchEvent(new Event('storageUpdated')); // Notify dashboard of new score
-
-        // Immediately navigate to the score detail page for the quiz just taken.
-        const timestamp = new Date(quizResult.date).getTime();
-        navigate(`/user/score/${timestamp}`);
+        // API call to save the quiz result
+        api.submitQuiz(quizResult)
+            .then(savedResult => {
+                window.dispatchEvent(new Event('storageUpdated')); // Notify other components of new score
+                // Navigate to the score detail page for the quiz just taken.
+                navigate(`/user/score/${savedResult.id}`);
+            })
+            .catch(error => {
+                console.error("Failed to submit quiz:", error);
+                navigate('/user/score'); // Navigate to history even if save fails
+            });
     };
 
     useEffect(() => {
         if (!currentUser) return;
 
-        // Fetch and filter questions
-        const allQuestions = []; // TODO: Replace with an API call to fetch questions.
-        const now = new Date();
-        const activeQuestions = allQuestions.filter(q => {
-            const release = new Date(q.releaseDate);
-            const disappear = new Date(q.disappearDate);
-            return q.status === 'published' && now >= release && now < disappear;
-        });
-
-        if (activeQuestions.length > 0) {
-            const quizId = activeQuestions.map(q => q.id).sort().join('-');
-            // TODO: Replace with an API call to check if the user has already taken this quiz.
-            const existingResult = null; 
-
-            if (existingResult) {
-                setCompletedQuizInfo({ date: existingResult.date });
-            } else {
-                setQuestions(activeQuestions);
+        const fetchQuiz = async () => {
+            try {
+                const activeQuestions = await api.getActiveQuiz();
+                if (activeQuestions && activeQuestions.length > 0) {
+                    // In a real app, you'd also check if the user has already taken this quizId
+                    setQuestions(activeQuestions);
+                }
+            } catch (error) {
+                console.error("Failed to fetch active quiz:", error);
+                toast.error("Could not load the quiz. Please try again later.");
+            } finally {
+                setLoading(false);
             }
-        }
-        setLoading(false);
+        };
+
+        fetchQuiz();
 
         // Prevent user from leaving the page
         const handleBeforeUnload = (e) => {

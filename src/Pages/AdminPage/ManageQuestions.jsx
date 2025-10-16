@@ -1,13 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Card, Row, Col, InputGroup } from 'react-bootstrap';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { createQuestion } from '../../services/apiServices';
 import { toast } from 'react-toastify';
-
-const getQuestions = () => JSON.parse(localStorage.getItem("quizQuestions")) || [];
-const saveQuestions = (questions) => {
-    localStorage.setItem("quizQuestions", JSON.stringify(questions));
-    window.dispatchEvent(new Event('storageUpdated')); // Notify other components
-};
 
 const initialQuestionState = {
     text_en: '',
@@ -20,23 +15,31 @@ const initialQuestionState = {
 };
 
 const ManageQuestions = () => {
-    const [questions, setQuestions] = useState(getQuestions());
     const [formState, setFormState] = useState(initialQuestionState);
-    const [editingId, setEditingId] = useState(null); // null for adding, question.id for editing
+    const [editingId, setEditingId] = useState(null);
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
 
     useEffect(() => {
         const editIdParam = searchParams.get('edit');
         if (editIdParam) {
-            const questionToEdit = questions.find(q => q.id === parseInt(editIdParam, 10));
-            if (questionToEdit) {
-                setFormState(questionToEdit);
-                setEditingId(questionToEdit.id);
-            }
+            const fetchQuestion = async () => {
+                try {
+                    const questionToEdit = await getQuestionById(editIdParam);
+                    if (questionToEdit) {
+                        setFormState(questionToEdit);
+                        setEditingId(questionToEdit.id);
+                    } else {
+                        toast.error("Question not found.");
+                        navigate('/admin/questions');
+                    }
+                } catch (error) {
+                    navigate('/admin/questions');
+                }
+            };
+            fetchQuestion();
         }
-    }, [searchParams, questions]);
-
+    }, [searchParams, navigate]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -61,35 +64,18 @@ const ManageQuestions = () => {
         navigate('/admin/questions'); // Clear URL query param
     };
 
-    const handleAddQuestion = (e) => {
-        e.preventDefault();
-        const isEnglishComplete = formState.text_en && formState.options_en.every(opt => opt) && formState.correctAnswer_en;
-        const isTamilComplete = formState.text_ta && formState.options_ta.every(opt => opt) && formState.correctAnswer_ta;
-
-        if (!isEnglishComplete || !isTamilComplete) {
-            toast.warn('Please fill out all fields in both English and Tamil, and select a correct answer for each.');
-            return;
-        }
-
-        let updatedQuestions;
-        if (editingId) {
-            // Update existing question
-            updatedQuestions = questions.map(q => q.id === editingId ? { ...formState, id: editingId } : q);
-            toast.success('Question updated successfully!');
-            navigate('/admin/publish'); // Redirect back to the publish queue
-        } else {
-            // Add new question
-            const currentAdmin = JSON.parse(localStorage.getItem("currentAdmin"));
-            updatedQuestions = [...questions, { ...formState, id: Date.now(), author: currentAdmin.email }];
-        }
-
-        setQuestions(updatedQuestions);
-        saveQuestions(updatedQuestions);
-        if (!editingId) {
-            toast.success('Question added successfully!');
-            setTimeout(() => resetForm(), 500); // Delay reset to allow toast to be seen
-        }
-    };
+// ... inside your component
+const handleSubmit = async (formData) => {
+  try {
+    // Just call the service function. It handles the rest!
+    const newQuestion = await createQuestion(formData);
+    toast.success('Question created successfully!');
+    // ... (logic to refresh your questions list)
+  } catch (error) {
+    // The apiFetch service already shows a toast on error.
+    console.error('Failed to create question:', error);
+  }
+};
 
     return (
         <Row>
@@ -97,7 +83,7 @@ const ManageQuestions = () => {
                 <Card className="shadow-sm">
                     <Card.Header as="h5">{editingId ? 'Edit Question' : 'Add New Question'}</Card.Header>
                     <Card.Body>
-                        <Form onSubmit={handleAddQuestion}>
+                        <Form onSubmit={handleSubmit}>
                             {/* English Fields */}
                             <h6 className="text-muted">English Version</h6>
                             <Form.Group className="mb-3">

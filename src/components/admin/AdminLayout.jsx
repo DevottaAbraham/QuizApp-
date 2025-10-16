@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Link, Outlet } from 'react-router-dom';
 import { Navbar, Nav, Container, Button, NavDropdown, Form } from 'react-bootstrap';
+import { AdminContext } from './AdminContext';
 /**
  * Renders the main application layout for a logged-in admin.
  * This component is wrapped in Routes and can safely use router hooks.
  */
-const AdminLayout = ({ currentAdmin, onLogout, theme, toggleTheme, children }) => {
+const AdminLayout = ({ currentAdmin, onLogout, theme, toggleTheme }) => {
   const [expanded, setExpanded] = useState(false);
 
   const handleLogout = () => {
@@ -13,7 +14,7 @@ const AdminLayout = ({ currentAdmin, onLogout, theme, toggleTheme, children }) =
   };
   
   return (
-    <>
+    <AdminContext.Provider value={{ currentAdmin }}>
       <Navbar bg="dark" variant="dark" expand="lg" className="sticky-top shadow" expanded={expanded}>
         <Container fluid>
           <Navbar.Brand as={Link} to="/admin/dashboard">Admin Panel</Navbar.Brand>
@@ -60,9 +61,9 @@ const AdminLayout = ({ currentAdmin, onLogout, theme, toggleTheme, children }) =
       </Navbar>
 
       <main className="container-fluid mt-4">
-        <Outlet />
+        <Outlet context={{ currentAdmin }} />
       </main>
-    </>
+    </AdminContext.Provider>
   );
 };
 

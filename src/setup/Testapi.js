@@ -9,3 +9,7 @@ vi.mock('react-toastify', () => ({
     error: vi.fn(),
   },
 }));
+it('should include Authorization header if a token is in sessionStorage', async () => {
+  // Mock sessionStorage to simulate a logged-in user
+  sessionStorage.setItem('authToken', 'my-secret-token');
+});

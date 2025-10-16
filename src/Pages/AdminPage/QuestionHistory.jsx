@@ -1,21 +1,33 @@
-import React, { useState } from 'react';
-import { Button, Card, ListGroup, Modal } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
+import { Button, Card, ListGroup, Modal, Spinner, Alert } from 'react-bootstrap';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { toast } from 'react-toastify';
-
-const getQuestions = () => JSON.parse(localStorage.getItem("quizQuestions")) || [];
-const saveQuestions = (questions) => {
-    localStorage.setItem("quizQuestions", JSON.stringify(questions));
-    window.dispatchEvent(new Event('storageUpdated')); // Notify other components
-};
+import * as api from '../../services/apiServices';
 
 const QuestionHistory = () => {
-    const [questions, setQuestions] = useState(getQuestions());
+    const [publishedQuestions, setPublishedQuestions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-    const publishedQuestions = questions.filter(q => q.status === 'published');
+    const fetchPublishedQuestions = async () => {
+        try {
+            setLoading(true);
+            setError('');
+            const allQuestions = await api.getQuestions();
+            setPublishedQuestions(allQuestions.filter(q => q.status === 'published'));
+        } catch (err) {
+            setError('Failed to load question history.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
+    useEffect(() => {
+        fetchPublishedQuestions();
+    }, []);
+    
     const formatDateTime = (dateString) => {
         if (!dateString) return 'N/A';
         return new Date(dateString).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -38,13 +50,17 @@ const QuestionHistory = () => {
         doc.save('published-questions.pdf');
     };
 
-    const handleDeleteAllPublished = () => {
-        // Filter out all published questions, keeping only drafts
-        const remainingQuestions = questions.filter(q => q.status !== 'published');
-        setQuestions(remainingQuestions);
-        saveQuestions(remainingQuestions);
-        toast.error('All published questions have been deleted.');
-        setShowDeleteModal(false);
+    const handleDeleteAllPublished = async () => {
+        try {
+            await api.deleteAllPublishedQuestions();
+            toast.success('All published questions have been deleted.');
+            await fetchPublishedQuestions(); // Re-fetch the data to ensure UI consistency
+        } catch (err) {
+            // API service will show an error toast
+            console.error('Failed to delete all published questions:', err);
+        } finally {
+            setShowDeleteModal(false);
+        }
     };
 
     return (
@@ -61,8 +77,10 @@ const QuestionHistory = () => {
                         </Button>
                     </div>
                 </Card.Header>
+                {loading && <Card.Body className="text-center"><Spinner animation="border" /></Card.Body>}
+                {error && <Alert variant="danger" className="m-3">{error}</Alert>}
                 <ListGroup variant="flush">
-                    {publishedQuestions.length > 0 ? publishedQuestions.map(q => (
+                    {!loading && publishedQuestions.length > 0 ? publishedQuestions.map(q => (
                         <ListGroup.Item key={q.id}>
                             <strong>{q.text_en}</strong>
                             <p className="text-muted mb-1 small">
@@ -76,7 +94,7 @@ const QuestionHistory = () => {
                                 ))}
                             </ul>
                         </ListGroup.Item>
-                    )) : (
+                    )) : !loading && (
                         <ListGroup.Item>No questions have been published yet.</ListGroup.Item>
                     )}
                 </ListGroup>

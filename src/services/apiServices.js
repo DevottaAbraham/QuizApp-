@@ -1,21 +1,27 @@
+
+
 import { toast } from 'react-toastify';
 
 // In a real application, this would come from an environment variable
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081/api';
 
 /**
- * A helper function to get the current user's auth token from localStorage.
- * In a real app, you might store this in a more secure way or in memory.
- * @returns {string|null} The auth token or null if not found.
+ * Securely stores and retrieves the authentication token from localStorage.
+ * localStorage persists even after the browser is closed.
  */
-const getAuthToken = () => {
-    // Check for either a regular user or an admin token
-    const userString = localStorage.getItem("currentUser");
-    const adminString = localStorage.getItem("currentAdmin");
+export const setAuthToken = (user) => {
+    if (user && user.token) {
+        localStorage.setItem('token', user.token);
+        localStorage.setItem('userRole', user.role);
+    } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userRole');
+    }
+};
 
-    const user = userString ? JSON.parse(userString) : null;
-    const admin = adminString ? JSON.parse(adminString) : null;
-    return user?.token || admin?.token || null;
+export const clearAuthToken = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userRole');
 };
 
 /**
@@ -25,66 +31,129 @@ const getAuthToken = () => {
  * @returns {Promise<any>} A promise that resolves with the JSON response.
  * @throws {Error} Throws an error if the network response is not ok.
  */
+// d:\Quize Website Design\QuizApp\QuizApp\src\services\apiServices.js
+
+// ... (other functions)
+
+/**
+ * A generic fetch wrapper to handle API requests, headers, and error handling.
+ */
 export const apiFetch = async (endpoint, options = {}) => {
     const url = `${API_BASE_URL}${endpoint}`;
-    const token = getAuthToken();
 
-    const defaultHeaders = {
+    const headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        ...options.headers,
     };
 
-    if (token) {
-        defaultHeaders['Authorization'] = `Bearer ${token}`;
+    // ✅ This block automatically adds the token for you!
+    if (!options.isPublic) {
+        const token = localStorage.getItem('token');
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
     }
-
+    
     const config = {
         ...options,
-        headers: {
-            ...defaultHeaders,
-            ...options.headers,
-        },
+        headers,
     };
 
     try {
         const response = await fetch(url, config);
 
+        // Check if the response is successful
         if (!response.ok) {
-            // Try to parse error details from the response body
             const errorData = await response.json().catch(() => ({ message: response.statusText }));
-            const errorMessage = errorData.message || `Request failed with status ${response.status}`;
+            const errorMessage = errorData.message || `HTTP error! status: ${response.status}`;
             toast.error(errorMessage);
             throw new Error(errorMessage);
         }
 
-        // Handle responses with no content
-        if (response.status === 204) {
-            return null;
-        }
-
+        // If the response is OK, parse and return the JSON
         return await response.json();
+
     } catch (error) {
-        console.error(`API Fetch Error (${endpoint}):`, error);
-        // If the error is a TypeError, it's a network-level failure (e.g., server is down).
-        // The custom error from the `!response.ok` block is a regular Error, not a TypeError.
-        if (error instanceof TypeError) {
-            toast.error('A network error occurred. Please try again.');
-        }
+        toast.error(error.message || 'A network error occurred.');
         throw error;
     }
 };
 
+// ... (other functions)
+
+// --- Admin Question Management Service ---
+export const getQuestions = () => apiFetch('/admin/questions');
+
+// ...
+
+// ✅ This function correctly uses apiFetch to create a question.
+export const createQuestion = (questionData) => apiFetch('/admin/questions', {
+    method: 'POST',
+    body: JSON.stringify(questionData),
+});
+
+// ... (other functions)
+
 // --- Exported API Service Functions ---
 
 // Authentication Service
-export const login = (username, password) => apiFetch('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ username, password }),
-});
+export const login = async (username, password) => {
+    const userData = await apiFetch('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
+        isPublic: true, // This is a public route
+    });
+    if (userData && userData.token) {
+        setAuthToken(userData); // Pass the entire user object
+    }
+    return userData;
+};
 
-export const register = (username, password) => apiFetch('/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({ username, password }),
+export const adminLogin = async (username, password) => {
+    // Call the single, correct login endpoint: /api/auth/login
+    // The backend will return the user's roles, which the frontend uses for authorization.
+    const adminData = await apiFetch('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
+        isPublic: true, // This is a public route
+    });
+
+    if (adminData && adminData.token) {
+        setAuthToken(adminData); // Pass the entire admin object
+    }
+    return adminData;
+};
+
+export const register = async (username, password) => {
+    const userData = await apiFetch('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
+        isPublic: true, // This is a public route
+    });
+    if (userData && userData.token) {
+        setAuthToken(userData); // Automatically log in the new user
+    }
+    return userData;
+};
+
+/**
+ * Registers a new admin user. This should be used carefully,
+ * ideally only by a super-admin or through a secure, initial setup process.
+ */
+export const adminRegister = async (username, password) => {
+    const adminData = await apiFetch('/auth/admin/register', {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
+        isPublic: true, // Registration should be public but protected by other means on the backend
+    });
+    // Do not automatically log in after admin registration for security.
+    return adminData;
+};
+
+export const checkSetupStatus = () => apiFetch('/auth/setup-status', {
+    method: 'GET',
+    isPublic: true,
 });
 
 // Content Service
@@ -106,6 +175,8 @@ export const submitQuiz = (quizResult) => apiFetch('/quizzes/submit', {
 // Score Service
 export const getScoreHistory = () => apiFetch('/scores/history');
 export const getScoreDetail = (quizId) => apiFetch(`/scores/history/${quizId}`);
+export const getAllScores = () => apiFetch('/admin/scores');
+export const getLeaderboard = () => apiFetch('/scores/leaderboard');
 
 // Notice Service
 export const getNotices = () => apiFetch('/notices');
@@ -138,15 +209,12 @@ export const deleteUser = (userId) => apiFetch(`/admin/users/${userId}`, {
     method: 'DELETE',
 });
 
-// --- Admin Question Management Service ---
-export const getQuestions = () => apiFetch('/admin/questions');
-
-export const getQuestionById = (questionId) => apiFetch(`/admin/questions/${questionId}`);
-
-export const createQuestion = (questionData) => apiFetch('/admin/questions', {
-    method: 'POST',
-    body: JSON.stringify(questionData),
+export const updateUser = (userId, userData) => apiFetch(`/admin/users/${userId}`, {
+    method: 'PUT',
+    body: JSON.stringify(userData),
 });
+
+
 
 export const updateQuestion = (questionId, questionData) => apiFetch(`/admin/questions/${questionId}`, {
     method: 'PUT',
@@ -154,5 +222,19 @@ export const updateQuestion = (questionId, questionData) => apiFetch(`/admin/que
 });
 
 export const deleteQuestion = (questionId) => apiFetch(`/admin/questions/${questionId}`, {
+    method: 'DELETE',
+});
+
+export const publishQuestion = (questionId, payload) => {
+    if (questionId === 'bulk') {
+        return apiFetch(`/admin/questions/bulk/publish`, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+    }
+    return apiFetch(`/admin/questions/${questionId}/publish`, { method: 'POST', body: JSON.stringify(payload) });
+};
+
+export const deleteAllPublishedQuestions = () => apiFetch('/admin/questions/published', {
     method: 'DELETE',
 });

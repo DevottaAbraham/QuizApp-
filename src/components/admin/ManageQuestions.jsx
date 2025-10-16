@@ -51,12 +51,12 @@ const ManageQuestions = () => {
         const optionsKey = `options_${lang}`;
         const updatedOptions = [...formState[optionsKey]];
         updatedOptions[index] = value;
-        setFormState({ ...formState, [optionsKey]: updatedOptions });
+        setFormState(prevState => ({ ...prevState, [optionsKey]: updatedOptions }));
     };
 
     const handleCorrectAnswerChange = (lang, value) => {
         const correctKey = `correctAnswer_${lang}`;
-        setFormState({ ...formState, [correctKey]: value });
+        setFormState(prevState => ({ ...prevState, [correctKey]: value }));
     };
 
     const resetForm = () => {

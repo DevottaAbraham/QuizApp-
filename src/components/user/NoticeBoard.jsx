@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Container, Spinner, Alert } from 'react-bootstrap';
-import { getNotices } from '../../services/apiService'; // Assuming this fetches all relevant notices
+import { getNotices } from '../../services/apiServices'; // Assuming this fetches all relevant notices
 
 const NoticeBoard = () => {
     const [notices, setNotices] = useState([]);

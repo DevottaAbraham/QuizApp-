@@ -94,7 +94,7 @@ const ManageNotices = () => {
                                     Status: <span className={notice.is_active ? 'text-success' : 'text-danger'}>{notice.is_active ? 'Active' : 'Inactive'}</span>
                                     {' | '} Created: {new Date(notice.created_at).toLocaleString()}
                                 </small>
-                                <Button variant="outline-danger" size="sm" onClick={() => handleDeleteNotice(notice.id)}>
+                                <Button variant="outline-danger" size="sm" className="float-end" onClick={() => handleDeleteNotice(notice.id)}>
                                     <i className="bi bi-trash-fill"></i> Delete
                                 </Button>
                             </ListGroup.Item>

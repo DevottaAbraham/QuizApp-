@@ -83,10 +83,9 @@ describe('apiService', () => {
       expect(result).toEqual(mockUser);
     });
 
-    it('should include Authorization header if a token is in localStorage', async () => {
-      // Mock localStorage to simulate a logged-in user
-      const mockUser = { token: 'my-secret-token' };
-      localStorage.setItem('currentUser', JSON.stringify(mockUser));
+    it('should include Authorization header if a token is in sessionStorage', async () => {
+      // Mock sessionStorage to simulate a logged-in user
+      sessionStorage.setItem('authToken', 'my-secret-token');
 
       vi.mocked(fetch).mockResolvedValue({
         ok: true,
@@ -104,12 +103,12 @@ describe('apiService', () => {
         })
       );
 
-      // Clean up localStorage mock
-      localStorage.removeItem('currentUser');
+      // Clean up sessionStorage mock
+      sessionStorage.removeItem('authToken');
     });
 
     it('should NOT include Authorization header if no token exists', async () => {
-      localStorage.removeItem('currentUser');
+      sessionStorage.removeItem('authToken');
 
       vi.mocked(fetch).mockResolvedValue({
         ok: true,

@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Card, Button, Row, Col, Form, Badge, Alert, ButtonGroup, Table, Modal } from 'react-bootstrap';
 import jsPDF from 'jspdf'; 
 import 'jspdf-autotable';
+import { toast } from 'react-toastify';
+import * as api from '../../services/apiServices';
 import { NotoSansTamil } from '../../assets/fonts/NotoSansTamil.js';
 
 
@@ -20,7 +22,7 @@ const translations = {
         pdfTitle: (username) => `Quiz Performance History for ${username}`,
         pdfHeaders: ['#', 'Date', 'Score'],
         correctAnswers: "Correctly Answered",
-        wrongAnswers: "Wrongly Answered",
+        wrongAnswers: "Wrongly Answered",                                                                                                           
     },
     ta: {
         title: "எனது செயல்திறன் வரலாறு",
@@ -52,15 +54,20 @@ const PerformanceHistory = ({ currentUser }) => {
 
     useEffect(() => {
         if (!currentUser) return;
-        const loadHistory = () => {
-            const userHistory = []; // TODO: Replace with an API call to fetch history
-            // Sort by date descending to show the latest first
-            const sortedHistory = userHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
-            setHistory(sortedHistory);
+        const loadHistory = async () => {
+            try {
+                const userHistory = await api.getScoreHistory();
+                // Sort by date descending to show the latest first
+                const sortedHistory = userHistory.sort((a, b) => new Date(b.quizTimestamp) - new Date(a.quizTimestamp));
+                setHistory(sortedHistory);
+            } catch (error) {
+                console.error("Failed to fetch performance history:", error);
+                toast.error("Could not load your score history.");
+            }
         };
 
         loadHistory(); // Initial load
-
+        
         // Listen for the custom event dispatched when a quiz is finished
         window.addEventListener('storageUpdated', loadHistory);
 
@@ -70,13 +77,13 @@ const PerformanceHistory = ({ currentUser }) => {
     useEffect(() => {
         let result = history;
         if (startDate) {
-            result = result.filter(item => new Date(item.date) >= new Date(startDate));
+            result = result.filter(item => new Date(item.quizTimestamp) >= new Date(startDate));
         }
         if (endDate) {
             // Add 1 day to endDate to include the whole day
             const end = new Date(endDate);
             end.setDate(end.getDate() + 1);
-            result = result.filter(item => new Date(item.date) < end);
+            result = result.filter(item => new Date(item.quizTimestamp) < end);
         }
         setFilteredHistory(result);
     }, [startDate, endDate, history]);
@@ -148,7 +155,7 @@ const PerformanceHistory = ({ currentUser }) => {
             <body>
                 <div class="container">
                     <h1>${title}</h1>
-                    <h2>Quiz on: ${formatDateTime(result.date)}</h2>
+                    <h2>Quiz on: ${formatDateTime(result.quizTimestamp)}</h2>
                     <hr>
                     ${answersToDisplay.length > 0 ? answerItems : `<p>No answers in this category.</p>`}
                 </div>
@@ -190,8 +197,8 @@ const PerformanceHistory = ({ currentUser }) => {
             head: [t.pdfHeaders],
             body: filteredHistory.map((item, i) => [
                 i + 1,
-                formatDateTime(item.date),
-                `${item.score} / ${item.total}`
+                formatDateTime(item.quizTimestamp),
+                `${item.score} / ${item.totalQuestions}`
             ]),
             styles: {
                 font: "NotoSansTamil", // Use the font for the table content
@@ -254,13 +261,13 @@ const PerformanceHistory = ({ currentUser }) => {
                         <tbody>
                             {filteredHistory.map((result, index) => (
                                 <tr key={index}>
-                                    <td>{formatDateTime(result.date)}</td>
-                                    <td><Badge bg="primary">{result.score}</Badge> / <Badge bg="secondary">{result.total}</Badge></td>
+                                    <td>{formatDateTime(result.quizTimestamp)}</td>
+                                    <td><Badge bg="primary">{result.score}</Badge> / <Badge bg="secondary">{result.totalQuestions}</Badge></td>
                                     <td className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center">
                                         <Button onClick={() => handleViewAnswersClick(result)} variant="info" size="sm" className="mb-2 mb-sm-0 me-sm-2 w-100 w-sm-auto">
                                             <i className="bi bi-search me-1"></i> View Answers
                                         </Button>
-                                        <Button as={Link} to={`/user/score/${new Date(result.date).getTime()}`} variant="outline-info" size="sm" title="View in new page" className="w-100 w-sm-auto">
+                                        <Button as={Link} to={`/user/score/${result.id}`} variant="outline-info" size="sm" title="View in new page" className="w-100 w-sm-auto">
                                             <i className="bi bi-box-arrow-up-right"></i>
                                         </Button>
                                     </td>
@@ -278,10 +285,10 @@ const PerformanceHistory = ({ currentUser }) => {
             {selectedResult && (
                 <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" fullscreen="md-down" centered>
                     <Modal.Header closeButton>
-                        <Modal.Title>Answer Review: {formatDateTime(selectedResult.date)}</Modal.Title>
+                        <Modal.Title>Answer Review: {formatDateTime(selectedResult.quizTimestamp)}</Modal.Title>
                     </Modal.Header>
                     <Modal.Body className="bg-body-tertiary">
-                        <p>Select a category to view the questions and answers in a new tab.</p>
+                        <p>Select a category to view the questions and your answers in a new tab.</p>
                         <div className="d-grid gap-2">
                             <Button variant="outline-success" onClick={() => handleViewReport('correct')}>
                                 <i className="bi bi-check-circle-fill me-2"></i>

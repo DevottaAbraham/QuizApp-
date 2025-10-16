@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getHomePageContent } from '../../components/user/contentService';
+import { getHomePageContent } from '../../services/apiServices.js';
 
 const Home = ({ currentUser }) => {
     const [homeContent, setHomeContent] = useState({ title: 'Loading...', lead: '' });

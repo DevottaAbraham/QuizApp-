@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, ListGroup, Badge, Alert, Button, Spinner } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { getNotices, dismissNotice, dismissAllNotices } from '../../services/apiService';
+import * as api from '../../services/apiServices';
 
 const UserDashboard = ({ currentUser }) => {
     const [notices, setNotices] = useState([]);
@@ -11,7 +11,7 @@ const UserDashboard = ({ currentUser }) => {
         if (!currentUser) return;
 
         setLoading(true);
-        getNotices()
+        api.getNotices()
             .then(data => {
                 // Assuming the API returns notices sorted by date
                 setNotices(data);
@@ -24,7 +24,7 @@ const UserDashboard = ({ currentUser }) => {
         // Optimistically remove the notice from the UI
         setNotices(prevNotices => prevNotices.filter(n => n.id !== noticeId));
         // Call the API to mark the notice as dismissed
-        dismissNotice(noticeId).catch(error => {
+        api.dismissNotice(noticeId).catch(error => {
             // If the API call fails, we might want to add the notice back or show an error
             console.error(`Failed to dismiss notice ${noticeId}:`, error);
             // For simplicity, we're not adding it back here, but the API service will show a toast.
@@ -35,7 +35,7 @@ const UserDashboard = ({ currentUser }) => {
         // Optimistically clear notices from the UI
         setNotices([]);
         // Call the API to dismiss all notices
-        dismissAllNotices().catch(error => {
+        api.dismissAllNotices().catch(error => {
             console.error("Failed to dismiss all notices:", error);
         });
     };

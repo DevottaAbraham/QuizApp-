@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Form, Table, Badge, Button, Alert, Modal, Row, Col, InputGroup, Spinner } from 'react-bootstrap';
+import * as api from '../../services/apiServices';
 
 // Translations for the report generator
 const translations = {
@@ -15,25 +16,43 @@ const translations = {
 
 const ViewScores = () => {
     const [users, setUsers] = useState([]);
+    const [allScores, setAllScores] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedUserId, setSelectedUserId] = useState('');
     const [userHistory, setUserHistory] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [selectedResult, setSelectedResult] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
-        const allUsers = JSON.parse(localStorage.getItem("quizUsers")) || [];
-        setUsers(allUsers);
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                setError('');
+                const [fetchedUsers, fetchedScores] = await Promise.all([
+                    api.getUsers(),
+                    api.getAllScores()
+                ]);
+                setUsers(fetchedUsers.filter(u => u.role === 'USER'));
+                setAllScores(fetchedScores);
+            } catch (err) {
+                setError('Failed to load score data.');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
     }, []);
 
     useEffect(() => {
         if (selectedUserId) {
-            const history = JSON.parse(localStorage.getItem(`quizHistory_${selectedUserId}`)) || [];
+            const history = allScores.filter(score => score.user.id === Number(selectedUserId));
             setUserHistory(history.sort((a, b) => new Date(b.date) - new Date(a.date)));
         } else {
             setUserHistory([]);
         }
-    }, [selectedUserId]);
+    }, [selectedUserId, allScores]);
 
     const handleViewAnswersClick = (result) => {
         setSelectedResult(result);
@@ -47,11 +66,11 @@ const ViewScores = () => {
 
     const generateReportHTML = (result, filterType) => {
         const t = translations['en']; // Admin view defaults to English for report generation
-        const isCorrect = filterType === 'correct';
-        const title = isCorrect ? t.correctAnswers : t.wrongAnswers;
-        const answersToDisplay = result.answers.filter(a => a.isCorrect === isCorrect);
+        const title = filterType === 'correct' ? t.correctAnswers : t.wrongAnswers;
+        const answersToDisplay = result.answers.filter(a => a.isCorrect === (filterType === 'correct'));
 
         const answerItems = answersToDisplay.map((answer, i) => {
+            const isCorrect = answer.isCorrect;
             const questionHTML = `<p class="question-text"><b>Q${i + 1}:</b> ${answer.questionText_en}</p><p class="question-text tamil">${answer.questionText_ta}</p>`;
             if (isCorrect) {
                 return `<div class="card correct"><div class="card-body">${questionHTML}<p class="answer-text correct-text">Answer: ${answer.userAnswer}</p><p class="answer-text correct-text tamil">பதில்: ${answer.userAnswer_ta}</p></div></div>`;
@@ -80,7 +99,7 @@ const ViewScores = () => {
 
     const userStats = selectedUserId && userHistory.length > 0 ? {
         quizzesTaken: userHistory.length,
-        averageScore: (userHistory.reduce((acc, curr) => acc + (curr.score / curr.total), 0) / userHistory.length * 100).toFixed(1),
+        averageScore: (userHistory.reduce((acc, curr) => acc + (curr.score / curr.totalQuestions), 0) / userHistory.length * 100).toFixed(1),
     } : null;
 
     return (
@@ -88,6 +107,10 @@ const ViewScores = () => {
             <Card className="shadow-sm">
                 <Card.Header as="h5">View User Scores</Card.Header>
                 <Card.Body>
+                    {loading && <div className="text-center"><Spinner animation="border" /></div>}
+                    {error && <Alert variant="danger">{error}</Alert>}
+                    
+                    {!loading && !error && (
                     <Row className="align-items-stretch">
                         <Col md={6} className="mb-3 mb-md-0">
                             <Form.Group className="mb-3">
@@ -100,7 +123,7 @@ const ViewScores = () => {
                             <Form.Select onChange={(e) => setSelectedUserId(e.target.value)} value={selectedUserId}>
                                 <option value="">-- Select a user --</option>
                                 {filteredUsers.map(user => (
-                                    <option key={user.userId} value={user.userId}>{user.username}</option>
+                                    <option key={user.id} value={user.id}>{user.username}</option>
                                 ))}
                             </Form.Select>
                         </Col>
@@ -108,7 +131,7 @@ const ViewScores = () => {
                             <Col md={6}>
                                 <Card bg="body-tertiary" className="h-100">
                                     <Card.Body className="text-center">
-                                        <Card.Title>{users.find(u => u.userId === selectedUserId)?.username}'s Stats</Card.Title>
+                                        <Card.Title>{users.find(u => u.id === Number(selectedUserId))?.username}'s Stats</Card.Title>
                                         <Row>
                                             <Col>
                                                 <p className="mb-0">Quizzes Taken</p>
@@ -124,6 +147,7 @@ const ViewScores = () => {
                             </Col>
                         )}
                     </Row>
+                    )}
 
                     {selectedUserId && (
                         <div className="mt-4">
@@ -139,8 +163,8 @@ const ViewScores = () => {
                                     <tbody>
                                         {userHistory.map((result, index) => (
                                             <tr key={index}>
-                                                <td>{formatDateTime(result.date)}</td>
-                                                <td><Badge bg="primary">{result.score}</Badge> / <Badge bg="secondary">{result.total}</Badge></td>
+                                                <td>{formatDateTime(result.quizTimestamp)}</td>
+                                                <td><Badge bg="primary">{result.score}</Badge> / <Badge bg="secondary">{result.totalQuestions}</Badge></td>
                                                 <td>
                                                     <Button variant="info" size="sm" onClick={() => handleViewAnswersClick(result)}>
                                                         View Answers
@@ -161,7 +185,7 @@ const ViewScores = () => {
             {selectedResult && (
                 <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered>
                     <Modal.Header closeButton>
-                        <Modal.Title>Answer Review for {users.find(u => u.userId === selectedUserId)?.username}</Modal.Title>
+                        <Modal.Title>Answer Review for {users.find(u => u.id === Number(selectedUserId))?.username}</Modal.Title>
                     </Modal.Header>
                     <Modal.Body className="bg-body-tertiary">
                         <p>Select a category to view the questions and answers in a new tab.</p>

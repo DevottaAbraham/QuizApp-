@@ -96,7 +96,7 @@ const Dashboard = () => {
                     <Card className="text-center shadow-sm h-100">
                         <Card.Body>
                             <Card.Title><i className="bi bi-cloud-check-fill me-2"></i>Published Questions</Card.Title>
-                            <Card.Text className="fs-1 fw-bold">{stats?.publishedQuestions ?? 0}</Card.Text>
+                            <Card.Text className="fs-1 fw-bold">{stats?.publishedQuestions ?? '...'}</Card.Text>
                         </Card.Body>
                     </Card>
                 </Col>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Nav, Form, Button, InputGroup, FormControl } from 'react-bootstrap';
 import { toast } from 'react-toastify';
-import { login, register } from '../../components/user/authService';
+import * as api from '../../services/apiServices';
 
 const UserLogin = ({ onLogin }) => {
     const [activeTab, setActiveTab] = useState('signup');
@@ -22,7 +22,7 @@ const UserLogin = ({ onLogin }) => {
             return;
         }
         try {
-            const user = await login(loginUsername, loginPassword);
+            const user = await api.login(loginUsername, loginPassword);
             if (user) {
                 onLogin(user);
             }
@@ -38,9 +38,10 @@ const UserLogin = ({ onLogin }) => {
             return;
         }
         try {
-            const newUser = await register(signupUsername, signupPassword);
-            if (newUser) {
-                toast.success(`User '${signupUsername}' created successfully! Logging you in...`);
+            // The `register` service function handles both registration and automatic login in one step.
+            const newUser = await api.register(signupUsername, signupPassword);
+            if (newUser && newUser.token) {
+                toast.success(`User '${signupUsername}' created successfully! Welcome!`);
                 onLogin(newUser);
             }
         } catch (error) {
@@ -69,14 +70,14 @@ const UserLogin = ({ onLogin }) => {
                                 <Form.Label>Username</Form.Label>
                                 <InputGroup>
                                     <InputGroup.Text>👤</InputGroup.Text>
-                                    <Form.Control type="text" placeholder="Enter username" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} />
+                                    <Form.Control type="text" placeholder="Enter username" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} required />
                                 </InputGroup>
                             </Form.Group>
                             <Form.Group className="mb-3" controlId="password">
                                 <Form.Label>Password</Form.Label>
                                 <InputGroup>
                                     <InputGroup.Text>🔑</InputGroup.Text>
-                                    <Form.Control type="password" placeholder="Enter password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
+                                    <Form.Control type="password" placeholder="Enter password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} required />
                                 </InputGroup>
                             </Form.Group>
                             <Button type="submit" variant="primary" className="w-100 rounded-pill mt-2">Login</Button>
@@ -88,12 +89,12 @@ const UserLogin = ({ onLogin }) => {
                             <h5 className="card-title text-center mb-3">Create Your Account</h5>
                             <Form.Group className="mb-3" controlId="signupUsername">
                                 <Form.Label>Choose a Username</Form.Label>
-                                <Form.Control type="text" placeholder="e.g., David123" value={signupUsername} onChange={(e) => setSignupUsername(e.target.value)} />
+                                <Form.Control type="text" placeholder="e.g., David123" value={signupUsername} onChange={(e) => setSignupUsername(e.target.value)} required />
                             </Form.Group>
                             <Form.Group className="mb-3" controlId="signupPassword">
                                 <Form.Label>Generated Password</Form.Label>
                                 <InputGroup>
-                                    <Form.Control type="text" placeholder="Click 'Generate'" readOnly value={signupPassword} />
+                                    <Form.Control type="text" placeholder="Click 'Generate'" readOnly value={signupPassword} required />
                                     <Button variant="secondary" onClick={generateUserPassword}>Generate</Button>
                                 </InputGroup>
                             </Form.Group>
