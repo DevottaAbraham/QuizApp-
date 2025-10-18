@@ -10,20 +10,24 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081/api'
  * localStorage persists even after the browser is closed.
  */
 export const setAuthToken = (user) => {
-    if (user && user.token) {
-        localStorage.setItem('token', user.token);
-        localStorage.setItem('userRole', user.role);
+    if (user && user.accessToken && user.refreshToken) {
+        localStorage.setItem('accessToken', user.accessToken);
+        localStorage.setItem('refreshToken', user.refreshToken);
+        localStorage.setItem('currentUser', JSON.stringify(user)); // Use the correct key
     } else {
-        localStorage.removeItem('token');
-        localStorage.removeItem('userRole');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('currentUser');
     }
 };
 
 export const clearAuthToken = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userRole');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('currentUser');
 };
 
+let isRefreshing = false;
 /**
  * A generic fetch wrapper to handle API requests, headers, and error handling.
  * @param {string} endpoint The API endpoint to call (e.g., '/auth/login').
@@ -32,50 +36,80 @@ export const clearAuthToken = () => {
  * @throws {Error} Throws an error if the network response is not ok.
  */
 // d:\Quize Website Design\QuizApp\QuizApp\src\services\apiServices.js
-
-// ... (other functions)
-
 /**
  * A generic fetch wrapper to handle API requests, headers, and error handling.
  */
 export const apiFetch = async (endpoint, options = {}) => {
     const url = `${API_BASE_URL}${endpoint}`;
-
-    const headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        ...options.headers,
-    };
-
-    // ✅ This block automatically adds the token for you!
-    if (!options.isPublic) {
-        const token = localStorage.getItem('token');
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
-    }
-    
-    const config = {
-        ...options,
-        headers,
-    };
+    let accessToken = localStorage.getItem("accessToken");
 
     try {
-        const response = await fetch(url, config);
+        const headers = { ...options.headers };
 
-        // Check if the response is successful
+        // Handle FormData vs JSON
+        if (options.body instanceof FormData) {
+            // Let the browser set the Content-Type for FormData
+        } else {
+            if (options.body) headers['Content-Type'] = 'application/json';
+        }
+
+        if (accessToken && !options.isPublic) {
+            headers['Authorization'] = `Bearer ${accessToken}`;
+        }
+
+        let response = await fetch(url, { ...options, headers });
+
+        if (response.status === 401 && !options.isPublic && !isRefreshing) {
+            isRefreshing = true;
+            const refreshToken = localStorage.getItem("refreshToken");
+            if (!refreshToken) {
+                clearAuthToken();
+                window.location.href = '/admin/login';
+                throw new Error("Session expired. Please log in again.");
+            }
+
+            try {
+                const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refreshToken }),
+                });
+
+                if (refreshResponse.ok) {
+                    const { accessToken: newAccessToken } = await refreshResponse.json();
+                    localStorage.setItem('accessToken', newAccessToken);
+                    // Retry the original request with the new token
+                    headers['Authorization'] = `Bearer ${newAccessToken}`;
+                    response = await fetch(url, { ...options, headers });
+                } else {
+                    clearAuthToken();
+                    window.location.href = '/admin/login';
+                    throw new Error("Session expired. Please log in again.");
+                }
+            } finally {
+                isRefreshing = false;
+            }
+        }
+
+        if (response.status === 204) return null; // Handle No Content
+
+        const data = await response.json();
+
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: response.statusText }));
-            const errorMessage = errorData.message || `HTTP error! status: ${response.status}`;
+            const errorMessage = data.message || `HTTP error! Status: ${response.status}`;
             toast.error(errorMessage);
             throw new Error(errorMessage);
         }
-
-        // If the response is OK, parse and return the JSON
-        return await response.json();
-
+        return data;
     } catch (error) {
-        toast.error(error.message || 'A network error occurred.');
+        if (error.name !== 'AbortError' && !error.message.startsWith('HTTP error')) {
+            // Avoid duplicate toasts if we already showed a session expired message
+            if (error instanceof TypeError && error.message === 'Failed to fetch') {
+                toast.error('Cannot connect to server. Is it running?');
+            } else if (!error.message.includes("Session expired")) {
+                toast.error(error.message || 'A network error occurred.');
+            }
+        }
         throw error;
     }
 };
@@ -104,7 +138,7 @@ export const login = async (username, password) => {
         body: JSON.stringify({ username, password }),
         isPublic: true, // This is a public route
     });
-    if (userData && userData.token) {
+    if (userData && userData.accessToken) {
         setAuthToken(userData); // Pass the entire user object
     }
     return userData;
@@ -119,7 +153,7 @@ export const adminLogin = async (username, password) => {
         isPublic: true, // This is a public route
     });
 
-    if (adminData && adminData.token) {
+    if (adminData && adminData.accessToken) {
         setAuthToken(adminData); // Pass the entire admin object
     }
     return adminData;
@@ -131,7 +165,7 @@ export const register = async (username, password) => {
         body: JSON.stringify({ username, password }),
         isPublic: true, // This is a public route
     });
-    if (userData && userData.token) {
+    if (userData && userData.accessToken) {
         setAuthToken(userData); // Automatically log in the new user
     }
     return userData;
@@ -181,15 +215,20 @@ export const getLeaderboard = () => apiFetch('/scores/leaderboard');
 // Notice Service
 export const getNotices = () => apiFetch('/notices');
 export const dismissNotice = (noticeId) => apiFetch(`/notices/${noticeId}/dismiss`, { method: 'POST' });
+export const getAdminNotices = () => apiFetch('/admin/notices');
 export const dismissAllNotices = () => apiFetch('/notices/dismiss-all', { method: 'POST' });
 export const createNotice = (noticeData) => apiFetch('/admin/notices', {
-    method: 'POST',
-    body: JSON.stringify(noticeData),
-});
+    method: 'POST', body: noticeData });
 export const deleteNotice = (noticeId) => apiFetch(`/admin/notices/${noticeId}`, {
     method: 'DELETE',
 });
 
+// Image Upload Service
+export const uploadImage = (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return apiFetch('/upload/image', { method: 'POST', body: formData });
+};
 
 
 // --- Admin Dashboard Service ---

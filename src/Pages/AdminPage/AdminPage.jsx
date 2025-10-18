@@ -1,5 +1,5 @@
 import React from 'react';
-import AdminLayout from '../components/admin/AdminLayout';
+import AdminLayout from '../../components/admin/AdminLayout';
 
 const AdminPage = ({ currentAdmin, onLogout }) => {
     // This component now simply passes props through to the layout.

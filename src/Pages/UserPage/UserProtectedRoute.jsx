@@ -6,7 +6,7 @@ const UserProtectedRoute = ({ user, onLogout, theme, toggleTheme, redirectPath =
     if (!user) {
         return <Navigate to={redirectPath} replace />;
     }
-    return <UserPage currentUser={user} onLogout={onLogout} theme={theme} toggleTheme={toggleTheme} children={<Outlet />} />;
+    return <UserPage currentUser={user} onLogout={onLogout} theme={theme} toggleTheme={toggleTheme} children={<Outlet context={{ currentUser: user }} />} />;
 };
 
 export default UserProtectedRoute;

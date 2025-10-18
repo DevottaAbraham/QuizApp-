@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Card, ListGroup, Modal, Form, Row, Col, Spinner, Alert } from 'react-bootstrap';
+import { Card, Button, ListGroup, Spinner, Alert, Modal, Form, Row, Col } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import * as api from '../../services/apiServices';
@@ -10,19 +10,18 @@ const PublishQueue = () => {
     const [error, setError] = useState('');
     const [showPublishModal, setShowPublishModal] = useState(false);
     const [publishingInfo, setPublishingInfo] = useState({ id: null, isBulk: false });
-
     const [publishDates, setPublishDates] = useState({ releaseDate: '', disappearDate: '' });
-    const [isPublishing, setIsPublishing] = useState(false);
 
     const fetchQuestions = async () => {
         try {
-            setLoading(true);
             setError('');
-            const fetchedQuestions = await api.getQuestions();
-            setQuestions(fetchedQuestions);
+            setLoading(true);
+            const data = await api.getQuestions();
+            // Filter for questions that are not published yet
+            setQuestions(data.filter(q => q.status === 'draft'));
         } catch (err) {
             setError('Failed to load questions. Please try again.');
-            // The apiService toast will also be shown.
+            console.error(err);
         } finally {
             setLoading(false);
         }
@@ -30,10 +29,7 @@ const PublishQueue = () => {
 
     useEffect(() => {
         fetchQuestions();
-        // No need to listen for storage events anymore
     }, []);
-
-    const draftQuestions = questions.filter(q => q.status === 'draft');
 
     const handlePublishClick = (id) => {
         setPublishingInfo({ id: id, isBulk: false });
@@ -41,7 +37,10 @@ const PublishQueue = () => {
     };
 
     const handlePublishAllClick = () => {
-        if (draftQuestions.length === 0) return;
+        if (questions.length === 0) {
+            toast.info("There are no draft questions to publish.");
+            return;
+        }
         setPublishingInfo({ id: null, isBulk: true });
         setShowPublishModal(true);
     };
@@ -62,45 +61,52 @@ const PublishQueue = () => {
             return;
         }
 
-        setIsPublishing(true);
-        const wasFirstPublish = !questions.some(q => q.status === 'published');
+        const payload = {
+            releaseDate: publishDates.releaseDate,
+            disappearDate: publishDates.disappearDate,
+        };
 
         try {
             if (publishingInfo.isBulk) {
-                const questionIds = draftQuestions.map(q => q.id);
-                // Use the new bulk publish endpoint
-                await api.publishQuestion('bulk', { questionIds, ...publishDates });
-                toast.info(`${questionIds.length} questions have been published!`);
+                const draftIds = questions.map(q => q.id);
+                await api.publishQuestion('bulk', { ...payload, questionIds: draftIds });
+                toast.success(`${questions.length} questions have been published!`);
             } else {
-                const questionToPublish = questions.find(q => q.id === publishingInfo.id);
-                if (questionToPublish) {
-                    // Use the new, dedicated publish endpoint for single questions
-                    await api.publishQuestion(publishingInfo.id, publishDates);
-                    toast.info("Question has been published!");
-                }
+                await api.publishQuestion(publishingInfo.id, payload);
+                toast.success("Question has been published!");
             }
-
-            if (wasFirstPublish) {
-                setTimeout(() => toast.info(<div>The user quiz link is now available on your <Link to="/admin/dashboard">dashboard</Link>!</div>, { autoClose: 10000 }), 500);
-            }
-
-            await fetchQuestions(); // Re-fetch to get the latest state
+            fetchQuestions(); // Refetch drafts to update the list
         } catch (err) {
-            console.error("Failed to publish question(s):", err);
+            // Error toast is handled by apiService
         } finally {
-            setIsPublishing(false);
             handleModalClose();
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this draft question?')) return;
+    const handleDeleteAllPublished = async () => {
+        if (!window.confirm('Are you sure you want to delete ALL published questions? This action cannot be undone.')) {
+            return;
+        }
+        try {
+            await api.deleteAllPublishedQuestions();
+            toast.success('All published questions have been deleted.');
+            // Optionally, you might want to re-fetch data if this page also shows published questions
+        } catch (err) {
+            console.error('Failed to delete all published questions:', err);
+            // Error toast is handled by apiService
+        }
+    };
+
+    const handleDeleteDraft = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this draft question?')) {
+            return;
+        }
         try {
             await api.deleteQuestion(id);
-            setQuestions(questions.filter(q => q.id !== id));
+            setQuestions(prev => prev.filter(q => q.id !== id));
             toast.success('Draft question deleted.');
         } catch (err) {
-            console.error("Failed to delete question:", err);
+            console.error('Failed to delete draft:', err);
         }
     };
 
@@ -108,34 +114,43 @@ const PublishQueue = () => {
         <>
             <Card className="shadow-sm">
                 <Card.Header as="h5" className="d-flex justify-content-between align-items-center">
-                    <span>Publish Queue ({draftQuestions.length})</span>
-                    <Button variant="primary" size="sm" onClick={handlePublishAllClick} disabled={draftQuestions.length === 0}>
-                        <i className="bi bi-cloud-upload-fill me-1"></i> Publish All
-                    </Button>
+                    <span>Publish Queue ({questions.length} Drafts)</span>
+                    <div>
+                        <Button variant="primary" size="sm" onClick={handlePublishAllClick} disabled={questions.length === 0} className="me-2">
+                            <i className="bi bi-cloud-upload-fill me-1"></i> Publish All
+                        </Button>
+                        <Button variant="outline-danger" size="sm" onClick={handleDeleteAllPublished}>
+                            <i className="bi bi-trash3-fill me-1"></i> Delete All Published
+                        </Button>
+                    </div>
                 </Card.Header>
-                {loading && <Card.Body className="text-center"><Spinner animation="border" /></Card.Body>}
-                {error && <Alert variant="danger" className="m-3">{error}</Alert>}
                 <ListGroup variant="flush">
-                    {!loading && draftQuestions.length > 0 ? draftQuestions.map(q => (
-                        <ListGroup.Item key={q.id} className="d-flex flex-column flex-md-row justify-content-between align-items-md-center">
-                            <div className="mb-2 mb-md-0">
-                                <strong>{q.text_en}</strong>
-                                <p className="text-muted mb-1 small fst-italic">{q.text_ta}</p>
-                            </div>
-                            <div className="d-flex align-items-center flex-shrink-0">
-                                <Button variant="info" size="sm" className="me-2" onClick={() => handlePublishClick(q.id)}>
-                                    <i className="bi bi-upload"></i> Publish
-                                </Button>
-                                <Button as={Link} to={`/admin/questions?edit=${q.id}`} variant="outline-secondary" size="sm" className="me-2" onClick={() => window.scrollTo(0, 0)}>
-                                    <i className="bi bi-pencil-fill"></i> Edit
-                                </Button>
-                                <Button variant="outline-danger" size="sm" onClick={() => handleDelete(q.id)}>
-                                    <i className="bi bi-trash-fill"></i>
-                                </Button>
-                            </div>
-                        </ListGroup.Item>
-                    )) : !loading && (
-                        <ListGroup.Item>There are no draft questions to publish. <Link to="/admin/questions">Add one now</Link>.</ListGroup.Item>
+                    {loading && <div className="text-center p-3"><Spinner animation="border" /></div>}
+                    {error && <Alert variant="danger" className="m-3">{error}</Alert>}
+                    {!loading && !error && (
+                        questions.length > 0 ? questions.map(q => (
+                            <ListGroup.Item key={q.id} className="d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+                                <div className="mb-2 mb-md-0">
+                                    <p className="mb-0 fw-bold">{q.text_en}</p>
+                                    <small className="text-muted fst-italic">{q.text_ta}</small>
+                                </div>
+                                <div className="d-flex align-items-center flex-shrink-0">
+                                    <Button variant="info" size="sm" className="me-2" onClick={() => handlePublishClick(q.id)}>
+                                        <i className="bi bi-upload"></i> Publish
+                                    </Button>
+                                    <Button as={Link} to={`/admin/questions?edit=${q.id}`} variant="outline-secondary" size="sm" className="me-2">
+                                        <i className="bi bi-pencil-fill"></i> Edit
+                                    </Button>
+                                    <Button variant="outline-danger" size="sm" onClick={() => handleDeleteDraft(q.id)}>
+                                        <i className="bi bi-trash-fill"></i>
+                                    </Button>
+                                </div>
+                            </ListGroup.Item>
+                        )) : (
+                            <ListGroup.Item>
+                                <Alert variant="info" className="text-center mb-0">The publish queue is empty. <Link to="/admin/questions">Add a new question</Link> to get started.</Alert>
+                            </ListGroup.Item>
+                        )
                     )}
                 </ListGroup>
             </Card>
@@ -148,29 +163,17 @@ const PublishQueue = () => {
                     <Form>
                         <Row>
                             <Col>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Release Time</Form.Label>
-                                    <Form.Control type="datetime-local" name="releaseDate" value={publishDates.releaseDate} onChange={handleDateChange} />
-                                </Form.Group>
+                                <Form.Group className="mb-3"><Form.Label>Release Time</Form.Label><Form.Control type="datetime-local" name="releaseDate" value={publishDates.releaseDate} onChange={handleDateChange} /></Form.Group>
                             </Col>
                             <Col>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Disappear Time</Form.Label>
-                                    <Form.Control type="datetime-local" name="disappearDate" value={publishDates.disappearDate} onChange={handleDateChange} />
-                                </Form.Group>
+                                <Form.Group className="mb-3"><Form.Label>Disappear Time</Form.Label><Form.Control type="datetime-local" name="disappearDate" value={publishDates.disappearDate} onChange={handleDateChange} /></Form.Group>
                             </Col>
                         </Row>
                     </Form>
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={handleModalClose}>Cancel</Button>
-                    <Button variant="primary" onClick={handleConfirmPublish} disabled={isPublishing}>
-                        {isPublishing ? (
-                            <><Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Publishing...</>
-                        ) : (
-                            'Confirm & Publish'
-                        )}
-                    </Button>
+                    <Button variant="primary" onClick={handleConfirmPublish}>Confirm & Publish</Button>
                 </Modal.Footer>
             </Modal>
         </>

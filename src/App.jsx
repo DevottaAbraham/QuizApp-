@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify'; import 'react-toastify/dist/ReactToastify.css';
+import { Routes, Route, Navigate, useNavigate, useLocation, useOutletContext } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import { Spinner } from 'react-bootstrap';
 
 // Auth and Layout
 import UserLogin from './pages/UserPage/UserLogin.jsx';
@@ -38,6 +39,32 @@ import ScoreDetail from './Pages/UserPage/ScoreDetail.jsx';
 import NotFound from './pages/Error/NotFound.jsx';
 import { setAuthToken, clearAuthToken, apiFetch } from './services/apiServices.js';
 
+// Wrapper component to use the outlet context
+const UserQuizPage = () => {
+  const { currentUser } = useOutletContext();
+  return <Quiz currentUser={currentUser} />;
+};
+
+const UserHomePage = () => {
+  const { currentUser } = useOutletContext();
+  return <Home currentUser={currentUser} />;
+};
+
+const UserDashboardPage = () => {
+  const { currentUser } = useOutletContext();
+  return <UserDashboard currentUser={currentUser} />;
+};
+
+const UserHistoryPage = () => {
+  const { currentUser } = useOutletContext();
+  return <PerformanceHistory currentUser={currentUser} />;
+};
+
+const UserScoreDetailPage = () => {
+  const { currentUser } = useOutletContext();
+  return <ScoreDetail currentUser={currentUser} />;
+};
+
 function App() {
   // Unified state for any authenticated user (admin or regular user)
   const [authenticatedUser, setAuthenticatedUser] = useState(() => JSON.parse(localStorage.getItem('currentUser')));
@@ -62,6 +89,17 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  useEffect(() => {
+    // This effect runs after `authenticatedUser` state has been updated.
+    if (authenticatedUser) {
+      if (authenticatedUser.role === 'ADMIN') {
+        navigate('/admin/dashboard', { replace: true });
+      } else {
+        navigate('/user/home', { replace: true });
+      }
+    }
+  }, [authenticatedUser]); // Dependency array ensures this runs only when the user state changes.
+
   // Derived state for convenience
   const isUserAdmin = authenticatedUser?.role === 'ADMIN';
   const currentUser = !isUserAdmin ? authenticatedUser : null;
@@ -69,12 +107,7 @@ function App() {
 
   const handleLogin = (user) => {
     setAuthToken(user);
-    setAuthenticatedUser(user);
-    if (user.role === 'ADMIN') {
-      navigate('/admin/dashboard');
-    } else {
-      navigate('/user/home');
-    }
+    setAuthenticatedUser(user); // Just set the state. The useEffect will handle navigation.
   };
 
   const handleLogout = () => {
@@ -98,11 +131,28 @@ function App() {
 
   // Show a loading indicator while we check the setup status
   if (isSetupComplete === null) {
-    return <div>Loading...</div>;
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
+        <Spinner animation="border" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </Spinner>
+      </div>
+    );
   }
 
   return (
     <>
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
       <Routes>
         {/* Root path redirects to admin login by default */}
         <Route path="/" element={<Navigate to="/admin/login" replace />} />
@@ -139,11 +189,11 @@ function App() {
         {/* Protected User Routes */}
         <Route path="/user" element={<UserProtectedRoute user={currentUser} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />}>
           <Route index element={<Navigate to="home" replace />} />
-          <Route path="home" element={<Home currentUser={currentUser} />} />
-          <Route path="dashboard" element={<UserDashboard currentUser={currentUser} />} />
-          <Route path="quiz" element={<Quiz currentUser={currentUser} />} />
-          <Route path="history" element={<PerformanceHistory currentUser={currentUser} />} />
-          <Route path="score/:id" element={<ScoreDetail currentUser={currentUser} />} />
+          <Route path="home" element={<UserHomePage />} />
+          <Route path="dashboard" element={<UserDashboardPage />} />
+          <Route path="quiz" element={<UserQuizPage />} />
+          <Route path="history" element={<UserHistoryPage />} />
+          <Route path="score/:id" element={<UserScoreDetailPage />} />
           <Route path="*" element={<Navigate to="home" replace />} />
         </Route>
 

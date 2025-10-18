@@ -15,18 +15,10 @@ const AdminLogin = ({ onLogin }) => {
             // 1. The adminLogin service calls your backend and gets the user data.
             const loginData = await adminLogin(username, password);
 
-            // 2. Check if the login was successful and we have the data.
-            if (loginData && loginData.token) {
-                // 3. Call the onLogin prop to update the application's state.
+            // 2. If login is successful, call onLogin to update the app's state.
+            if (loginData && loginData.accessToken) {
                 onLogin(loginData);
-
-                // 4. Redirect the user based on their role.
-                if (loginData.role === 'ADMIN') {
-                    navigate('/admin/dashboard'); // Redirect to the admin dashboard
-                } else {
-                    // Handle cases where a non-admin user tries to log in.
-                    toast.error("Login failed: You do not have administrator privileges.");
-                }
+                // The navigation is now handled by the useEffect in App.jsx
             }
         } catch (error) {
             console.error("Admin login failed:", error);
