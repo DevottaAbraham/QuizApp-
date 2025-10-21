@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Card, ListGroup, Button, Alert, Badge, Row, Col, Spinner, ButtonGroup } from 'react-bootstrap';
 import jsPDF from 'jspdf';
-import * as api from '../../services/apiServices';
+// import * as api from '../../services/apiServices';
 import 'jspdf-autotable';
 
 const ScoreDetail = ({ currentUser }) => {

@@ -29,13 +29,12 @@ const AdminLayout = ({ currentAdmin, onLogout, theme, toggleTheme }) => {
               </NavDropdown>
               {/* Only show the Manage Admins link if the logged-in admin is the main 'admin' user */}
               {currentAdmin?.username === 'admin' && <Nav.Link as={Link} to="/admin/manage-admins" onClick={() => setExpanded(false)}><i className="bi bi-person-badge-fill me-1"></i>Manage Admins</Nav.Link>}
-              <Nav.Link as={Link} to="/admin/users" onClick={() => setExpanded(false)}><i className="bi bi-person-gear me-1"></i>Users</Nav.Link>
-              <Nav.Link as={Link} to="/admin/notices" onClick={() => setExpanded(false)}><i className="bi bi-clipboard-data-fill me-1"></i>Notices</Nav.Link>
+              <Nav.Link as={Link} to="/admin/users" onClick={() => setExpanded(false)}><i className="bi bi-person-gear me-1"></i>Users</Nav.Link>              
               <Nav.Link as={Link} to="/admin/appearance" onClick={() => setExpanded(false)}><i className="bi bi-palette-fill me-1"></i>Appearance</Nav.Link>
               <NavDropdown title={<><i className="bi bi-tools me-1"></i> More</>} id="admin-more-dropdown">
                 <NavDropdown.Item as={Link} to="/admin/leaderboard" onClick={() => setExpanded(false)}><i className="bi bi-trophy-fill me-2"></i>Leaderboard</NavDropdown.Item>
-                <NavDropdown.Item as={Link} to="/admin/scores" onClick={() => setExpanded(false)}><i className="bi bi-clipboard2-pulse-fill me-2"></i>View Scores</NavDropdown.Item>
-                <NavDropdown.Item as={Link} to="/admin/activeUser" onClick={() => setExpanded(false)}><i className="bi bi-card-checklist me-2"></i>Active User</NavDropdown.Item>
+                <NavDropdown.Item as={Link} to="/admin/scores" onClick={() => setExpanded(false)}><i className="bi bi-clipboard2-pulse-fill me-2"></i>View Scores</NavDropdown.Item>                
+                <NavDropdown.Item as={Link} to="/admin/users/active" onClick={() => setExpanded(false)}><i className="bi bi-card-checklist me-2"></i>Active Users</NavDropdown.Item>
                 {/* Add other dropdown items here */}
               </NavDropdown>
             </Nav>

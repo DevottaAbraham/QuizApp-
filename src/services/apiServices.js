@@ -1,33 +1,31 @@
 
 
 import { toast } from 'react-toastify';
+import { createBrowserHistory } from 'history';
+
+// Create a history object to allow navigation from outside React components
+export const history = createBrowserHistory();
 
 // In a real application, this would come from an environment variable
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081/api';
 
 /**
- * Securely stores and retrieves the authentication token from localStorage.
- * localStorage persists even after the browser is closed.
+ * Stores the current user's information (without tokens) in localStorage.
  */
 export const setAuthToken = (user) => {
-    if (user && user.accessToken && user.refreshToken) {
-        localStorage.setItem('accessToken', user.accessToken);
-        localStorage.setItem('refreshToken', user.refreshToken);
+    if (user) {
         localStorage.setItem('currentUser', JSON.stringify(user)); // Use the correct key
     } else {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
         localStorage.removeItem('currentUser');
     }
 };
 
 export const clearAuthToken = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
     localStorage.removeItem('currentUser');
 };
 
 let isRefreshing = false;
+let refreshPromise = null;
 /**
  * A generic fetch wrapper to handle API requests, headers, and error handling.
  * @param {string} endpoint The API endpoint to call (e.g., '/auth/login').
@@ -38,72 +36,72 @@ let isRefreshing = false;
 // d:\Quize Website Design\QuizApp\QuizApp\src\services\apiServices.js
 /**
  * A generic fetch wrapper to handle API requests, headers, and error handling.
+ * This version includes automatic JWT refresh logic.
  */
 export const apiFetch = async (endpoint, options = {}) => {
     const url = `${API_BASE_URL}${endpoint}`;
-    let accessToken = localStorage.getItem("accessToken");
 
     try {
         const headers = { ...options.headers };
-
-        // Handle FormData vs JSON
         if (options.body instanceof FormData) {
             // Let the browser set the Content-Type for FormData
         } else {
             if (options.body) headers['Content-Type'] = 'application/json';
         }
 
-        if (accessToken && !options.isPublic) {
-            headers['Authorization'] = `Bearer ${accessToken}`;
-        }
+        const fetchOptions = { ...options, headers, credentials: 'include' };
 
-        let response = await fetch(url, { ...options, headers });
+        let response = await fetch(url, fetchOptions);
 
-        if (response.status === 401 && !options.isPublic && !isRefreshing) {
-            isRefreshing = true;
-            const refreshToken = localStorage.getItem("refreshToken");
-            if (!refreshToken) {
-                clearAuthToken();
-                window.location.href = '/admin/login';
-                throw new Error("Session expired. Please log in again.");
+        // If the token is expired (401), try to refresh it.
+        if (response.status === 401 && !options.isPublic) {
+            if (!isRefreshing) {
+                isRefreshing = true;
+                // Start the refresh process. All subsequent failed requests will wait on this promise.
+                refreshPromise = fetch(`${API_BASE_URL}/auth/refresh`, {
+                        method: 'POST',
+                        credentials: 'include'
+                    })
+                    .then(refreshResponse => {
+                        if (!refreshResponse.ok) {
+                            // If refresh fails, the session is truly over.
+                            clearAuthToken();
+                            // Determine where to redirect based on the current path
+                            if (window.location.pathname.startsWith('/admin')) {
+                                history.push('/admin/login');
+                            } else {
+                                history.push('/user/login');
+                            }
+                            return Promise.reject(new Error("Session expired. Please log in again."));
+                        }
+                        return refreshResponse.json();
+                    })
+                    .finally(() => {
+                        // Reset the refresh state once done.
+                        isRefreshing = false;
+                        refreshPromise = null;
+                    });
             }
 
-            try {
-                const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ refreshToken }),
-                });
-
-                if (refreshResponse.ok) {
-                    const { accessToken: newAccessToken } = await refreshResponse.json();
-                    localStorage.setItem('accessToken', newAccessToken);
-                    // Retry the original request with the new token
-                    headers['Authorization'] = `Bearer ${newAccessToken}`;
-                    response = await fetch(url, { ...options, headers });
-                } else {
-                    clearAuthToken();
-                    window.location.href = '/admin/login';
-                    throw new Error("Session expired. Please log in again.");
-                }
-            } finally {
-                isRefreshing = false;
-            }
+            // Wait for the refresh to complete...
+            await refreshPromise;
+            // ...then retry the original request. The browser now has the new accessToken cookie.
+            response = await fetch(url, fetchOptions);
         }
 
         if (response.status === 204) return null; // Handle No Content
 
-        const data = await response.json();
-
         if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
             const errorMessage = data.message || `HTTP error! Status: ${response.status}`;
             toast.error(errorMessage);
             throw new Error(errorMessage);
         }
-        return data;
+
+        return await response.json();
     } catch (error) {
+        // Handle network errors and other exceptions
         if (error.name !== 'AbortError' && !error.message.startsWith('HTTP error')) {
-            // Avoid duplicate toasts if we already showed a session expired message
             if (error instanceof TypeError && error.message === 'Failed to fetch') {
                 toast.error('Cannot connect to server. Is it running?');
             } else if (!error.message.includes("Session expired")) {
@@ -114,10 +112,25 @@ export const apiFetch = async (endpoint, options = {}) => {
     }
 };
 
+/**
+ * Fetches the current user's data if a token is available.
+ * This should be called when the application initializes to restore the session.
+ */
+export const getCurrentUser = async () => {
+    try {
+        // This endpoint will succeed if the cookie is valid, and fail if not.
+        return await apiFetch('/auth/me');
+    } catch (error) {
+        // If the request fails (e.g., 401), it means no valid session exists.
+        return null;
+    }
+};
+
 // ... (other functions)
 
 // --- Admin Question Management Service ---
 export const getQuestions = () => apiFetch('/admin/questions');
+export const getQuestionById = (questionId) => apiFetch(`/admin/questions/${questionId}`);
 
 // ...
 
@@ -138,25 +151,12 @@ export const login = async (username, password) => {
         body: JSON.stringify({ username, password }),
         isPublic: true, // This is a public route
     });
-    if (userData && userData.accessToken) {
-        setAuthToken(userData); // Pass the entire user object
+    // After a successful login, the backend sets httpOnly cookies.
+    // We just need to store the user's info (without tokens) in localStorage.
+    if (userData) {
+        setAuthToken(userData);
     }
     return userData;
-};
-
-export const adminLogin = async (username, password) => {
-    // Call the single, correct login endpoint: /api/auth/login
-    // The backend will return the user's roles, which the frontend uses for authorization.
-    const adminData = await apiFetch('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ username, password }),
-        isPublic: true, // This is a public route
-    });
-
-    if (adminData && adminData.accessToken) {
-        setAuthToken(adminData); // Pass the entire admin object
-    }
-    return adminData;
 };
 
 export const register = async (username, password) => {
@@ -165,25 +165,34 @@ export const register = async (username, password) => {
         body: JSON.stringify({ username, password }),
         isPublic: true, // This is a public route
     });
-    if (userData && userData.accessToken) {
+    // After registration, the backend automatically logs the user in and sets cookies.
+    // We store the returned user info in localStorage.
+    if (userData) {
         setAuthToken(userData); // Automatically log in the new user
     }
     return userData;
 };
 
-/**
- * Registers a new admin user. This should be used carefully,
- * ideally only by a super-admin or through a secure, initial setup process.
- */
-export const adminRegister = async (username, password) => {
-    const adminData = await apiFetch('/auth/admin/register', {
-        method: 'POST',
-        body: JSON.stringify({ username, password }),
-        isPublic: true, // Registration should be public but protected by other means on the backend
-    });
-    // Do not automatically log in after admin registration for security.
-    return adminData;
+export const logout = async () => {
+    return await apiFetch('/auth/logout', { method: 'POST' });
 };
+
+export const registerAdmin = async (username, password, adminSetupToken) => {
+    return await apiFetch('/auth/register-admin', {
+        method: 'POST',
+        body: JSON.stringify({ username, password, adminSetupToken }),
+        isPublic: true, // The endpoint is public, but protected by the token
+    });
+};
+
+export const forgotPasswordGenerateTemp = async (username) => {
+    return await apiFetch('/auth/forgot-password-generate-temp', {
+        method: 'POST',
+        body: JSON.stringify({ username }),
+        isPublic: true,
+    });
+};
+
 
 export const checkSetupStatus = () => apiFetch('/auth/setup-status', {
     method: 'GET',
@@ -210,18 +219,7 @@ export const submitQuiz = (quizResult) => apiFetch('/quizzes/submit', {
 export const getScoreHistory = () => apiFetch('/scores/history');
 export const getScoreDetail = (quizId) => apiFetch(`/scores/history/${quizId}`);
 export const getAllScores = () => apiFetch('/admin/scores');
-export const getLeaderboard = () => apiFetch('/scores/leaderboard');
-
-// Notice Service
-export const getNotices = () => apiFetch('/notices');
-export const dismissNotice = (noticeId) => apiFetch(`/notices/${noticeId}/dismiss`, { method: 'POST' });
-export const getAdminNotices = () => apiFetch('/admin/notices');
-export const dismissAllNotices = () => apiFetch('/notices/dismiss-all', { method: 'POST' });
-export const createNotice = (noticeData) => apiFetch('/admin/notices', {
-    method: 'POST', body: noticeData });
-export const deleteNotice = (noticeId) => apiFetch(`/admin/notices/${noticeId}`, {
-    method: 'DELETE',
-});
+export const getLeaderboard = () => apiFetch('/admin/leaderboard'); // Corrected to use the admin-specific endpoint
 
 // Image Upload Service
 export const uploadImage = (file) => {
@@ -239,9 +237,21 @@ export const getDashboardStats = () => apiFetch('/admin/dashboard/stats');
 
 export const getUsers = () => apiFetch('/admin/users');
 
+export const createAdmin = (adminData) => apiFetch('/admin/admins', {
+    method: 'POST',
+    body: JSON.stringify(adminData),
+});
+
+export const getAdmins = () => apiFetch('/admin/admins');
+
+
 export const createUser = (userData) => apiFetch('/admin/users', {
     method: 'POST',
     body: JSON.stringify(userData),
+});
+
+export const deleteAdmin = (adminId) => apiFetch(`/admin/admins/${adminId}`, {
+    method: 'DELETE',
 });
 
 export const deleteUser = (userId) => apiFetch(`/admin/users/${userId}`, {
@@ -252,6 +262,14 @@ export const updateUser = (userId, userData) => apiFetch(`/admin/users/${userId}
     method: 'PUT',
     body: JSON.stringify(userData),
 });
+
+export const resetUserPassword = (userId) => apiFetch(`/admin/users/${userId}/reset-password`, {
+    method: 'POST',
+});
+
+export const getUserById = (userId) => apiFetch(`/admin/users/${userId}`);
+
+export const getScoresForUser = (userId) => apiFetch(`/admin/users/${userId}/scores`);
 
 
 

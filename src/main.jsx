@@ -1,17 +1,20 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-import App from './App.jsx';
-// Import Bootstrap and global styles here
+import { unstable_HistoryRouter as HistoryRouter } from 'react-router-dom';
+import App from './App';
+import { AuthProvider } from './contexts/AuthContext.jsx';
+import { history } from './services/apiServices';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap-icons/font/bootstrap-icons.css';
 import 'react-toastify/dist/ReactToastify.css';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    {/* Use HistoryRouter to enable navigation from outside React components */}
+    <HistoryRouter history={history} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </HistoryRouter>
   </React.StrictMode>
 );

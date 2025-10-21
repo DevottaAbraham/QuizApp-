@@ -1,115 +1,97 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Card, ListGroup, Button, Alert, Badge, Row, Col, Spinner, ButtonGroup } from 'react-bootstrap';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-import { getScoreDetail } from '../../services/apiService';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { Card, Table, Spinner, Alert, Button } from 'react-bootstrap';
+import { toast } from 'react-toastify';
+import * as api from '../../services/apiServices'; // CRITICAL FIX: Import the api service
 
 const ScoreDetail = ({ currentUser }) => {
-    const { id } = useParams(); // Use the persistent ID from the URL
-    const [result, setResult] = useState(null);
+    const { id } = useParams();
+    const [scoreDetail, setScoreDetail] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [lang, setLang] = useState('en'); // 'en' or 'ta'
-    const navigate = useNavigate();
+    const [error, setError] = useState('');
+    const [lang, setLang] = useState('en');
+
+    const fetchScore = useCallback(async () => {
+        try {
+            setLoading(true);
+            const data = await api.getScoreDetail(id);
+            setScoreDetail(data);
+        } catch (err) {
+            setError('Failed to fetch score detail.');
+            // Toast is already handled by apiServices
+        } finally {
+            setLoading(false);
+        }
+    }, [id]);
 
     useEffect(() => {
-        if (!currentUser || !id) return;
+        fetchScore();
+    }, [fetchScore]);
 
-        setLoading(true);
-        getScoreDetail(id)
-            .then(data => {
-                setResult(data);
-            })
-            .catch(error => console.error(`Failed to fetch score detail for ID ${id}:`, error))
-            .finally(() => setLoading(false));
-
-    }, [id, currentUser]);
-
-    const handleDownloadPDF = () => {
-        if (!result) return;
-
-        const doc = new jsPDF();
-        doc.text(`Quiz Result for ${currentUser.username}`, 14, 20);
-        doc.text(`Score: ${result.score} / ${result.total}`, 14, 30);
-        doc.text(`Date: ${new Date(result.date).toLocaleString()}`, 14, 40);
-
-        const tableColumn = ["#", "Question", "Your Answer", "Correct Answer", "Result"];
-        const tableRows = [];
-
-        result.answers.forEach((answer, index) => {
-            const rowData = [
-                index + 1,
-                answer.questionText_en, // Default to English for PDF
-                answer.userAnswer,      // Default to English for PDF
-                answer.correctAnswer,   // Default to English for PDF
-                answer.isCorrect ? "Correct" : "Wrong",
-            ];
-            tableRows.push(rowData);
-        });
-
-        doc.autoTable({
-            head: [tableColumn],
-            body: tableRows,
-            startY: 50,
-        });
-
-        doc.save(`quiz-result-${currentUser.username}-${id}.pdf`);
+    const handleDownloadPdf = () => {
+        window.open(`${import.meta.env.VITE_API_URL}/scores/history/${id}/download?lang=${lang}`, '_blank');
     };
 
     if (loading) {
         return (
-            <div className="text-center">
-                <Spinner animation="border" role="status" variant="primary" />
-                <p>Loading score details...</p>
+            <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
+                <Spinner animation="border" />
             </div>
         );
     }
 
-    if (!currentUser) {
-        return <Alert variant="danger">You must be logged in to view score details.</Alert>;
+    if (error || !scoreDetail) {
+        return <Alert variant="danger">{error || 'Score details could not be loaded.'}</Alert>;
     }
 
-    if (!result) {
-        return <Alert variant="warning">Could not find the specified quiz result. <Link to="/user/score">Go back to score history.</Link></Alert>;
-    }
+    const { quizDate, score, answeredQuestions } = scoreDetail;
 
     return (
-        <Card className="shadow-sm">
-            <Card.Header as="h4" className="d-flex flex-column flex-md-row justify-content-between align-items-md-center">
-                <div className="mb-2 mb-md-0">
-                    <ButtonGroup size="sm" className="me-3">
-                        <Button variant={lang === 'en' ? 'primary' : 'outline-primary'} onClick={() => setLang('en')}>EN</Button>
-                        <Button variant={lang === 'ta' ? 'primary' : 'outline-primary'} onClick={() => setLang('ta')}>TA</Button>
-                    </ButtonGroup>
-                    <span>Answer Breakdown</span>
-                </div>
-                <div className="d-flex">
-                    <Button variant="outline-secondary" size="sm" onClick={() => navigate(-1)} className="me-2 flex-grow-1">
-                        <i className="bi bi-arrow-left-circle-fill me-1"></i> Back
+        <Card>
+            <Card.Header className="d-flex justify-content-between align-items-center">
+                <h3>Quiz Result</h3>
+                <div>
+                    <Button variant="secondary" size="sm" onClick={() => setLang(l => l === 'en' ? 'ta' : 'en')} className="me-2">
+                        {lang === 'en' ? 'தமிழ்' : 'English'}
                     </Button>
-                    <Button variant="success" size="sm" onClick={handleDownloadPDF}><i className="bi bi-file-earmark-pdf-fill me-1"></i> Download PDF</Button>
+                    <Button variant="danger" size="sm" onClick={handleDownloadPdf}>
+                        <i className="bi bi-file-earmark-pdf-fill me-2"></i>Download PDF
+                    </Button>
                 </div>
             </Card.Header>
             <Card.Body>
-                <Row className="mb-3 text-center">
-                    <Col><strong>Date:</strong> {new Date(result.date).toLocaleString()}</Col>
-                    <Col><strong>Final Score:</strong> <Badge bg="primary">{result.score}</Badge> / <Badge bg="secondary">{result.total}</Badge></Col>
-                </Row>
-                <ListGroup variant="flush">
-                    {result.answers.map((answer, index) => (
-                        <ListGroup.Item key={index} className={answer.isCorrect ? 'border-success' : 'border-danger'}>
-                            <strong>Q{index + 1}: {answer[`questionText_${lang}`] || answer.questionText_en}</strong>
-                            {answer.isCorrect ? (
-                                <p className="mb-0 text-success">Your answer: {answer[`userAnswer_${lang}`] || answer.userAnswer} <i className="bi bi-check-circle-fill"></i></p>
-                            ) : (
-                                <>
-                                    <p className="mb-0 text-danger">Your answer: {answer[`userAnswer_${lang}`] || answer.userAnswer} <i className="bi bi-x-circle-fill"></i></p>
-                                    <p className="mb-0 text-info">Correct answer: {answer[`correctAnswer_${lang}`] || answer.correctAnswer}</p>
-                                </>
-                            )}
-                        </ListGroup.Item>
-                    ))}
-                </ListGroup>
+                <p><strong>Date:</strong> {new Date(quizDate).toLocaleString()}</p>
+                <p><strong>Final Score:</strong> {score} / {answeredQuestions.length}</p>
+                <hr />
+                <Table striped bordered hover responsive>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Question</th>
+                            <th>Your Answer</th>
+                            <th>Correct Answer</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {answeredQuestions.map((q, index) => (
+                            <tr key={q.questionId}>
+                                <td>{index + 1}</td>
+                                <td>{lang === 'en' ? q.questionText : q.questionText_ta}</td>
+                                <td className={q.isCorrect ? '' : 'text-danger'}>{q.userAnswer}</td>
+                                <td>{q.correctAnswer}</td>
+                                <td>
+                                    {q.isCorrect ? (
+                                        <span className="text-success fw-bold">Correct</span>
+                                    ) : (
+                                        <span className="text-danger fw-bold">Incorrect</span>
+                                    )}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </Table>
+                <Link to="/user/history" className="btn btn-primary">Back to History</Link>
             </Card.Body>
         </Card>
     );

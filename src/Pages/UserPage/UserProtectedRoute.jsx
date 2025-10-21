@@ -1,12 +1,20 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import UserPage from './UserPage.jsx';
+import UserLayout from './UserLayout';
 
-const UserProtectedRoute = ({ user, onLogout, theme, toggleTheme, redirectPath = '/user/login' }) => {
+const UserProtectedRoute = ({ user, onLogout, theme, toggleTheme }) => {
     if (!user) {
-        return <Navigate to={redirectPath} replace />;
+        // If no user is authenticated, redirect to the login page
+        return <Navigate to="/user/login" replace />;
     }
-    return <UserPage currentUser={user} onLogout={onLogout} theme={theme} toggleTheme={toggleTheme} children={<Outlet context={{ currentUser: user }} />} />;
+
+    // If a user is authenticated, render the UserLayout with its children
+    return (
+        <UserLayout currentUser={user} onLogout={onLogout} theme={theme} toggleTheme={toggleTheme}>
+            {/* Pass the user object to child routes via the Outlet's context */}
+            <Outlet context={{ currentUser: user }} />
+        </UserLayout>
+    );
 };
 
 export default UserProtectedRoute;

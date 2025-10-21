@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Navbar, Nav, Container, Button, Modal, Form } from 'react-bootstrap';
+import UserNavbar from '../../components/user/UserNavbar';
 import { ToastContainer } from 'react-toastify';
 
 const UserLayout = ({ currentUser, onLogout, theme, toggleTheme, children }) => {
@@ -13,42 +14,11 @@ const UserLayout = ({ currentUser, onLogout, theme, toggleTheme, children }) => 
 
     return (
         <div className="d-flex flex-column min-vh-100">
-            <Navbar bg={theme === 'dark' ? 'dark' : 'primary'} variant="dark" expand="lg" className="shadow-sm" collapseOnSelect>
-                <Container>
-                    <Navbar.Brand as={Link} to="/user/home">Quiz Platform</Navbar.Brand>
-                    <Navbar.Toggle aria-controls="basic-navbar-nav" />
-                    <Navbar.Collapse id="basic-navbar-nav">
-                        <Nav className="me-auto" activeKey={location.pathname}>
-                            <Nav.Link as={NavLink} to="/user/home" end>Home</Nav.Link>
-                            <Nav.Link as={NavLink} to="/user/dashboard">Dashboard & Notices</Nav.Link>
-                            <Nav.Link as={NavLink} to="/user/quiz">Take Quiz</Nav.Link>
-                            <Nav.Link as={NavLink} to="/user/score">Performance</Nav.Link>
-                        </Nav>
-                        <Nav className="ms-auto align-items-center">
-                            <Form.Check
-                                type="switch"
-                                id="theme-switch-user"
-                                label={theme === 'light' ? <i className="bi bi-brightness-high-fill fs-5"></i> : <i className="bi bi-moon-stars-fill fs-5"></i>}
-                                checked={theme === 'dark'}
-                                onChange={toggleTheme}
-                                className="d-flex align-items-center my-2 my-lg-0 mx-lg-3"
-                                title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-                            />
-                            <Navbar.Text className="my-2 my-lg-0">
-                                <i className="bi bi-person-circle me-1"></i>
-                                <span className="fw-bold">{currentUser.username}</span>
-                            </Navbar.Text>
-                            <Button variant="outline-light" onClick={() => setShowLogoutModal(true)} className="ms-lg-3 my-2 my-lg-0" >
-                                <i className="bi bi-box-arrow-right me-1"></i> Logout
-                            </Button>
-                        </Nav>
-                    </Navbar.Collapse>
-                </Container>
-            </Navbar>
+            <UserNavbar currentUser={currentUser} onLogout={onLogout} theme={theme} toggleTheme={toggleTheme} />
 
             <main className="flex-grow-1">
                 <Container className="py-4">
-                    {children || <Outlet />}
+                    {children}
                 </Container>
             </main>
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Nav, Form, Button, InputGroup, FormControl } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import * as api from '../../services/apiServices';
+import { Link } from 'react-router-dom';
 
 const UserLogin = ({ onLogin }) => {
     const [activeTab, setActiveTab] = useState('signup');
@@ -30,7 +31,6 @@ const UserLogin = ({ onLogin }) => {
             // The service already showed a toast, but we could add more specific UI changes here.
         }
     };
-
     const handleRegister = async (e) => {
         e.preventDefault();
         if (!signupUsername || !signupPassword) {
@@ -40,7 +40,7 @@ const UserLogin = ({ onLogin }) => {
         try {
             // The `register` service function handles both registration and automatic login in one step.
             const newUser = await api.register(signupUsername, signupPassword);
-            if (newUser && newUser.token) {
+            if (newUser) { // The presence of newUser indicates a successful registration and auto-login
                 toast.success(`User '${signupUsername}' created successfully! Welcome!`);
                 onLogin(newUser);
             }
