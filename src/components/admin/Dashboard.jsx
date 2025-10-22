@@ -1,29 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Col, Row, InputGroup, Button, Form, Spinner, Alert } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { Link, useOutletContext } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getDashboardStats } from '../../services/apiServices';
 
 const Dashboard = () => {
+    const { currentAdmin } = useOutletContext(); // Get the admin user from the layout context
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                setLoading(true);
-                const data = await getDashboardStats();
-                setStats(data);
-            } catch (err) {
-                setError('Failed to load dashboard statistics.');
-                // The apiService will also show a toast.
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchStats();
-    }, []);
+        // Only fetch if the admin user object is available
+        if (currentAdmin) {
+            const fetchStats = async () => {
+                try {
+                    setLoading(true);
+                    const data = await getDashboardStats();
+                    setStats(data);
+                } catch (err) {
+                    setError('Failed to load dashboard statistics.');
+                    // The apiService will also show a toast.
+                } finally {
+                    setLoading(false);
+                }
+            };
+            fetchStats();
+        } else {
+            // If currentAdmin is not available, don't attempt to load.
+            setLoading(false);
+        }
+    }, [currentAdmin]); // Re-run the effect if the currentAdmin object changes.
 
     const userQuizLink = `${window.location.origin}/user/login`;
 
@@ -34,7 +41,11 @@ const Dashboard = () => {
     };
 
     if (loading) {
-        return <Spinner animation="border" role="status"><span className="visually-hidden">Loading...</span></Spinner>;
+        return (
+            <div className="text-center p-5">
+                <Spinner animation="border" role="status"><span className="visually-hidden">Loading...</span></Spinner>
+            </div>
+        );
     }
 
     if (error) {

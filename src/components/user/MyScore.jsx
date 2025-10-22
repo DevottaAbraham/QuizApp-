@@ -19,7 +19,12 @@ const MyScore = () => {
     }, []); // Run once on component mount
 
     if (loading) {
-        return <div className="text-center"><Spinner animation="border" /> <p>Loading score history...</p></div>;
+        return (
+            <div className="text-center">
+                <Spinner animation="border" />
+                <p>Loading score history...</p>
+            </div>
+        );
     }
 
     if (history.length === 0 && !loading) {

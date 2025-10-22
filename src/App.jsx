@@ -47,11 +47,6 @@ const UserQuizPage = () => {
   return <Quiz currentUser={currentUser} />;
 };
 
-const UserHomePage = () => {
-  const { currentUser } = useOutletContext();
-  return <Home currentUser={currentUser} />
-};
-
 const UserDashboardPage = () => {
   const { currentUser } = useOutletContext();
   return <UserDashboard currentUser={currentUser} />;
@@ -196,8 +191,8 @@ function App() {
           <Route path="users" element={<UserManagement />} />
           <Route path="users/:userId/scores" element={<UserScoreDetails />} />
           <Route path="appearance" element={<AppearanceSettings />} />
-          {/* The ManageAdmins component will handle its own visibility logic if needed */}
-          <Route path="manage-admins" element={<ManageAdmins />} />
+          {/* Pass currentAdmin to ManageAdmins for highlighting and self-deletion prevention */}
+          <Route path="manage-admins" element={<ManageAdmins currentAdmin={currentAdmin} />} />
           <Route path="publish" element={<PublishQueue />} />
           <Route path="history" element={<QuestionHistory />} />
           <Route path="leaderboard" element={<Leaderboard />} />
@@ -224,7 +219,7 @@ function App() {
         {authenticatedUser && !isUserAdmin && (
           <Route path="/user" element={<UserProtectedRoute user={currentUser} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />}>
             <Route index element={<Navigate to="home" replace />} />
-            <Route path="home" element={<UserHomePage />} />
+            <Route path="home" element={<Home />} /> {/* Render Home directly */}
             <Route path="dashboard" element={<UserDashboardPage />} />
             <Route path="quiz" element={<UserQuizPage />} />
             <Route path="history" element={<UserHistoryPage />} />

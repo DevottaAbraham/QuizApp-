@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import UserLayout from './UserLayout';
+import UserLayout from './UserLayout'; // Corrected path
 
 const UserProtectedRoute = ({ user, onLogout, theme, toggleTheme }) => {
     if (!user) {

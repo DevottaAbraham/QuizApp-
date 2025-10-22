@@ -220,6 +220,7 @@ export const getScoreHistory = () => apiFetch('/scores/history');
 export const getScoreDetail = (quizId) => apiFetch(`/scores/history/${quizId}`);
 export const getAllScores = () => apiFetch('/admin/scores');
 export const getLeaderboard = () => apiFetch('/admin/leaderboard'); // Corrected to use the admin-specific endpoint
+export const getMonthlyPerformance = () => apiFetch('/admin/scores/monthly-performance');
 
 // Image Upload Service
 export const uploadImage = (file) => {
@@ -270,6 +271,8 @@ export const resetUserPassword = (userId) => apiFetch(`/admin/users/${userId}/re
 export const getUserById = (userId) => apiFetch(`/admin/users/${userId}`);
 
 export const getScoresForUser = (userId) => apiFetch(`/admin/users/${userId}/scores`);
+
+export const getPerformanceForUser = (userId) => apiFetch(`/admin/users/${userId}/performance`);
 
 
 

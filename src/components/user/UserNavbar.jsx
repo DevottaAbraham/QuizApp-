@@ -25,10 +25,9 @@ const UserNavbar = ({ currentUser, onLogout, theme, toggleTheme }) => {
                                 <Form.Check
                                     type="switch"
                                     id="theme-switch-user"
-                                    label={theme === 'light' ? <i className="bi bi-brightness-high-fill"></i> : <i className="bi bi-moon-stars-fill"></i>}
-                                    checked={theme === 'dark'}
+                                    label={theme === 'light' ? <i className="bi bi-brightness-high-fill text-white"></i> : <i className="bi bi-moon-stars-fill text-white"></i>}
+                                    checked={theme === 'dark'} 
                                     onChange={toggleTheme}
-                                    className="text-white me-3"
                                 />
                                 <Button variant="outline-light" onClick={onLogout}>
                                     <i className="bi bi-box-arrow-left me-1"></i>Logout

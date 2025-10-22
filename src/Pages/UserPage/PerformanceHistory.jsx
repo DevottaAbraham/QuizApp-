@@ -58,7 +58,7 @@ const PerformanceHistory = ({ currentUser }) => {
             try {
                 const userHistory = await api.getScoreHistory();
                 // Sort by date descending to show the latest first
-                const sortedHistory = userHistory.sort((a, b) => new Date(b.quizTimestamp) - new Date(a.quizTimestamp));
+                const sortedHistory = userHistory.sort((a, b) => new Date(b.quizDate) - new Date(a.quizDate));
                 setHistory(sortedHistory);
             } catch (error) {
                 console.error("Failed to fetch performance history:", error);
@@ -77,13 +77,13 @@ const PerformanceHistory = ({ currentUser }) => {
     useEffect(() => {
         let result = history;
         if (startDate) {
-            result = result.filter(item => new Date(item.quizTimestamp) >= new Date(startDate));
+            result = result.filter(item => new Date(item.quizDate) >= new Date(startDate));
         }
         if (endDate) {
             // Add 1 day to endDate to include the whole day
             const end = new Date(endDate);
             end.setDate(end.getDate() + 1);
-            result = result.filter(item => new Date(item.quizTimestamp) < end);
+            result = result.filter(item => new Date(item.quizDate) < end);
         }
         setFilteredHistory(result);
     }, [startDate, endDate, history]);
@@ -155,7 +155,7 @@ const PerformanceHistory = ({ currentUser }) => {
             <body>
                 <div class="container">
                     <h1>${title}</h1>
-                    <h2>Quiz on: ${formatDateTime(result.quizTimestamp)}</h2>
+                    <h2>Quiz on: ${formatDateTime(result.quizDate)}</h2>
                     <hr>
                     ${answersToDisplay.length > 0 ? answerItems : `<p>No answers in this category.</p>`}
                 </div>
@@ -195,7 +195,7 @@ const PerformanceHistory = ({ currentUser }) => {
         doc.autoTable({
             startY: 20,
             head: [t.pdfHeaders],
-            body: filteredHistory.map((item, i) => [
+            body: filteredHistory.map((item, i) => [ // This was using quizTimestamp which is incorrect
                 i + 1,
                 formatDateTime(item.quizTimestamp),
                 `${item.score} / ${item.totalQuestions}`
@@ -261,16 +261,16 @@ const PerformanceHistory = ({ currentUser }) => {
                         <tbody>
                             {filteredHistory.map((result, index) => (
                                 <tr key={index}>
-                                    <td>{formatDateTime(result.quizTimestamp)}</td>
+                                    <td>{formatDateTime(result.quizDate)}</td>
                                     <td><Badge bg="primary">{result.score}</Badge> / <Badge bg="secondary">{result.totalQuestions}</Badge></td>
                                     <td className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center">
                                         <Button onClick={() => handleViewAnswersClick(result)} variant="info" size="sm" className="mb-2 mb-sm-0 me-sm-2 w-100 w-sm-auto">
                                             <i className="bi bi-search me-1"></i> View Answers
                                         </Button>
-                                        <Button as={Link} to={`/user/score/${result.id}`} variant="outline-info" size="sm" title="View in new page" className="w-100 w-sm-auto">
+                                        <Button as={Link} to={`/user/score/${result.quizId}`} variant="outline-info" size="sm" title="View in new page" className="w-100 w-sm-auto">
                                             <i className="bi bi-box-arrow-up-right"></i>
                                         </Button>
-                                    </td>
+                                    </td> 
                                 </tr>
                             ))}
                         </tbody>
@@ -285,18 +285,18 @@ const PerformanceHistory = ({ currentUser }) => {
             {selectedResult && (
                 <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" fullscreen="md-down" centered>
                     <Modal.Header closeButton>
-                        <Modal.Title>Answer Review: {formatDateTime(selectedResult.quizTimestamp)}</Modal.Title>
+                        <Modal.Title>Answer Review: {formatDateTime(selectedResult.quizDate)}</Modal.Title>
                     </Modal.Header>
                     <Modal.Body className="bg-body-tertiary">
                         <p>Select a category to view the questions and your answers in a new tab.</p>
                         <div className="d-grid gap-2">
                             <Button variant="outline-success" onClick={() => handleViewReport('correct')}>
                                 <i className="bi bi-check-circle-fill me-2"></i>
-                                View {t.correctAnswers} ({selectedResult.answers.filter(a => a.isCorrect).length})
+                                View {t.correctAnswers} ({selectedResult.score})
                             </Button>
                             <Button variant="outline-danger" onClick={() => handleViewReport('wrong')}>
                                 <i className="bi bi-x-circle-fill me-2"></i>
-                                View {t.wrongAnswers} ({selectedResult.answers.filter(a => !a.isCorrect).length})
+                                View {t.wrongAnswers} ({selectedResult.totalQuestions - selectedResult.score})
                             </Button>
                         </div>
                     </Modal.Body>

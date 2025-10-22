@@ -22,10 +22,6 @@ const UserLayout = ({ currentUser, onLogout, theme, toggleTheme, children }) => 
                 </Container>
             </main>
 
-            <footer className="bg-body-tertiary text-center text-muted py-3 mt-auto border-top">
-                &copy; {new Date().getFullYear()} Quiz Platform. All Rights Reserved.
-            </footer>
-
             <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={false} />
 
             <Modal show={showLogoutModal} onHide={() => setShowLogoutModal(false)} centered>
