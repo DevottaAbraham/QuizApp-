@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Card, ListGroup, Button, Alert, Badge, Row, Col, Spinner, ButtonGroup, Nav } from 'react-bootstrap';
 import jsPDF from 'jspdf';
 import * as api from '../../services/apiServices';
@@ -13,8 +13,12 @@ const ScoreDetail = ({ currentUser }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null); // New state for local error messages
     const [lang, setLang] = useState('en'); // 'en' or 'ta'
-    const [filter, setFilter] = useState('all'); // 'all', 'correct', 'incorrect'
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Read the filter from the URL query parameter, defaulting to 'all'
+    const queryParams = new URLSearchParams(location.search);
+    const [filter, setFilter] = useState(queryParams.get('filter') || 'all');
 
     // Handle invalid ID immediately
     if (isNaN(scoreId)) {
@@ -67,13 +71,13 @@ const ScoreDetail = ({ currentUser }) => {
 
     return (
         <Card className="shadow-sm">
-            <Card.Header as="h4" className="d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+            <Card.Header as="h4" className="d-flex flex-column flex-md-row justify-content-between align-items-center">
                 <div className="mb-2 mb-md-0">
                     <ButtonGroup size="sm" className="me-3">
                         <Button variant={lang === 'en' ? 'primary' : 'outline-primary'} onClick={() => setLang('en')}>EN</Button>
                         <Button variant={lang === 'ta' ? 'primary' : 'outline-primary'} onClick={() => setLang('ta')}>TA</Button>
                     </ButtonGroup>
-                    <span>Answer Breakdown</span>
+                    <span className="align-middle">Answer Breakdown</span>
                 </div>
                 <div className="d-flex">
                     <Button variant="outline-secondary" size="sm" onClick={() => navigate(-1)} className="me-2 flex-grow-1">
@@ -112,7 +116,7 @@ const ScoreDetail = ({ currentUser }) => {
                             ) : (
                                 <>
                                     <p className="mb-0 text-danger">Your answer: {lang === 'ta' ? answer.userAnswer_ta : answer.userAnswer} <i className="bi bi-x-circle-fill"></i></p>
-                                    <p className="mb-0 text-info">Correct answer: {answer[`correctAnswer_${lang}`] || answer.correctAnswer_en}</p>
+                                    <p className="mb-0 text-success">Correct answer: {answer[`correctAnswer_${lang}`] || answer.correctAnswer_en} <i className="bi bi-check-circle-fill"></i></p>
                                 </>
                             )}
                         </ListGroup.Item>

@@ -1,79 +1,67 @@
 import React, { useState } from 'react';
-import { Card, Form, Button, InputGroup, Alert } from 'react-bootstrap';
+import { Form, Button, Card, Alert, Container, Row, Col } from 'react-bootstrap';
 import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
 import * as api from '../../services/apiServices';
 
-const AdminSetup = ({ onLogin }) => {
+const AdminSetup = ({ onLogin, onSetupComplete }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!username || !password) {
-            toast.warn("Please fill in both username and password.");
-            return;
-        }
         setLoading(true);
+        setError('');
+
         try {
-            // Use the standard registration. The backend will automatically make the first user an admin.
-            const newUser = await api.register(username, password);
-            if (newUser) {
-                toast.success(`Admin user '${username}' created successfully! Redirecting to dashboard...`);
-                onLogin(newUser); // This will set the user state and trigger the redirect to the dashboard.
-            }
-        } catch (error) {
-            // Error is already handled and toasted by apiServices
+            // FIX: Call the dedicated registerAdmin endpoint to guarantee an ADMIN role is created.
+            // The backend will reject this if an admin already exists.
+            const response = await api.registerAdmin(username, password);
+            toast.success("Admin account created successfully! Logging you in...");
+            
+            // CRITICAL FIX:
+            // 1. Notify the App component that setup is now complete.
+            onSetupComplete();
+            // 2. Log the new admin in.
+            onLogin(response);
+
+        } catch (err) {
+            setError(err.message || "An unknown error occurred during setup.");
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh', backgroundColor: '#f8f9fa' }}>
-            <Card className="shadow-lg" style={{ width: '400px' }}>
-                <Card.Header className="text-center">
-                    <h3>Initial Admin Setup</h3>
-                </Card.Header>
-                <Card.Body className="p-4">
-                    <Alert variant="info">
-                        Create the first administrator account for the application.
-                    </Alert>
-                    <Form onSubmit={handleSubmit}>
-                        <Form.Group className="mb-3" controlId="username">
-                            <Form.Label>Admin Username</Form.Label>
-                            <InputGroup>
-                                <InputGroup.Text>👤</InputGroup.Text>
-                                <Form.Control
-                                    type="text"
-                                    placeholder="Choose an admin username"
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
-                                    required
-                                />
-                            </InputGroup>
-                        </Form.Group>
-                        <Form.Group className="mb-3" controlId="password">
-                            <Form.Label>Password</Form.Label>
-                            <InputGroup>
-                                <InputGroup.Text>🔑</InputGroup.Text>
-                                <Form.Control
-                                    type="password"
-                                    placeholder="Create a strong password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                />
-                            </InputGroup>
-                        </Form.Group>
-                        <Button type="submit" variant="primary" className="w-100" disabled={loading}>
-                            {loading ? 'Creating Account...' : 'Create Admin Account'}
-                        </Button>
-                    </Form>
-                </Card.Body>
-            </Card>
-        </div>
+        <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: '100vh' }}>
+            <Row className="w-100">
+                <Col md={6} lg={5} xl={4} className="mx-auto">
+                    <Card className="shadow-lg">
+                        <Card.Body className="p-4">
+                            <h3 className="text-center mb-4">Initial Admin Setup</h3>
+                            <p className="text-center text-muted mb-4">Create the first administrator account for the application.</p>
+                            {error && <Alert variant="danger">{error}</Alert>}
+                            <Form onSubmit={handleSubmit}>
+                                <Form.Group className="mb-3" controlId="username">
+                                    <Form.Label>Admin Username</Form.Label>
+                                    <Form.Control type="text" value={username} onChange={(e) => setUsername(e.target.value)} required />
+                                </Form.Group>
+                                <Form.Group className="mb-3" controlId="password">
+                                    <Form.Label>Password</Form.Label>
+                                    <Form.Control type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                                </Form.Group>
+                                <div className="d-grid">
+                                    <Button variant="primary" type="submit" disabled={loading}>
+                                        {loading ? 'Creating Account...' : 'Create Admin Account'}
+                                    </Button>
+                                </div>
+                            </Form>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+        </Container>
     );
 };
 

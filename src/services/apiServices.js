@@ -177,11 +177,12 @@ export const logout = async () => {
     return await apiFetch('/auth/logout', { method: 'POST' });
 };
 
-export const registerAdmin = async (username, password, adminSetupToken) => {
+export const registerAdmin = async (username, password) => {
+    // This endpoint is specifically for the initial admin setup.
     return await apiFetch('/auth/register-admin', {
         method: 'POST',
-        body: JSON.stringify({ username, password, adminSetupToken }),
-        isPublic: true, // The endpoint is public, but protected by the token
+        body: JSON.stringify({ username, password }),
+        isPublic: true, // The endpoint is public, but protected by backend logic.
     });
 };
 
@@ -189,6 +190,14 @@ export const forgotPasswordGenerateTemp = async (username) => {
     return await apiFetch('/auth/forgot-password-generate-temp', {
         method: 'POST',
         body: JSON.stringify({ username }),
+        isPublic: true,
+    });
+};
+
+export const adminForgotPassword = async (payload) => {
+    return await apiFetch('/auth/admin-forgot-password', {
+        method: 'POST',
+        body: JSON.stringify(payload),
         isPublic: true,
     });
 };
@@ -266,6 +275,11 @@ export const updateUser = (userId, userData) => apiFetch(`/admin/users/${userId}
 
 export const resetUserPassword = (userId) => apiFetch(`/admin/users/${userId}/reset-password`, {
     method: 'POST',
+});
+
+export const forceChangePassword = (payload) => apiFetch('/auth/force-change-password', {
+    method: 'POST',
+    body: JSON.stringify(payload),
 });
 
 export const getUserById = (userId) => apiFetch(`/admin/users/${userId}`);

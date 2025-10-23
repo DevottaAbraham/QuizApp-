@@ -6,6 +6,7 @@ import { Spinner } from 'react-bootstrap';
 // Auth and Layout
 import UserLogin from './Pages/UserPage/UserLogin.jsx';
 import AdminSetup from './Pages/AdminPage/AdminSetup.jsx'; // Import the new setup component
+import AdminForgotPassword from './Pages/AdminPage/AdminForgotPassword.jsx'; // Import the new component
 import AdminLogin from './Pages/AdminPage/AdminLogin.jsx';
 
 // Corrected import path for the protected route component
@@ -115,15 +116,14 @@ function App() {
   };
 
   const handleLogout = () => {
-    const isAdminPath = location.pathname.startsWith('/admin');
     apiFetch('/auth/logout', { method: 'POST' }); // Explicitly call the backend logout
     logout(); // This clears the frontend user state and tokens
-    // Redirect to a public page after logout
-    if (isAdminPath) {
-      navigate('/admin/login', { replace: true });
-    } else {
-      navigate('/user/login', { replace: true });
-    }
+    // Always redirect to the admin login page after logout.
+    navigate('/admin/login', { replace: true });
+  };
+
+  const handleSetupComplete = () => {
+    setIsSetupComplete(true);
   };
 
   const toggleTheme = () => {
@@ -168,7 +168,7 @@ function App() {
             ) : currentUser ? (
               <Navigate to="/user/home" replace />
             ) : (
-              <Navigate to="/user/login" replace />
+              <Navigate to="/admin/login" replace />
             )
           }
         />
@@ -177,7 +177,8 @@ function App() {
         <Route path="admin/login" element={
           currentAdmin ? <Navigate to="/admin/dashboard" replace /> : <AdminLogin onLogin={handleAdminLogin} isSetupComplete={isSetupComplete} />
         } />
-        <Route path="admin/setup" element={isSetupComplete ? <Navigate to="/admin/login" replace /> : <AdminSetup onLogin={handleAdminLogin} />} />
+        <Route path="admin/setup" element={isSetupComplete ? <Navigate to="/admin/login" replace /> : <AdminSetup onLogin={handleAdminLogin} onSetupComplete={handleSetupComplete} />} />
+        <Route path="admin/forgot-password" element={<AdminForgotPassword />} />
 
         {/* Protected Admin Routes */}
         {/* This route is only accessible if a user is authenticated AND their role is ADMIN. */}
@@ -213,7 +214,7 @@ function App() {
           If a logged-in user IS an admin, any attempt to access a /user/* path
           should redirect them back to their admin dashboard. This prevents 404s and confusion.
         */}
-        {authenticatedUser && isUserAdmin && <Route path="/user/*" element={<Navigate to="/admin/dashboard" replace />} />}
+        {isUserAdmin && <Route path="/user/*" element={<Navigate to="/admin/dashboard" replace />} />}
 
         {/* Protected User Routes - Only render these if the authenticated user is NOT an admin */}
         {authenticatedUser && !isUserAdmin && (

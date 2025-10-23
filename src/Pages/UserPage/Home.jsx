@@ -1,55 +1,35 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Spinner, Alert, Button } from 'react-bootstrap';
-import { apiFetch } from '../../services/apiServices';
-import { toast } from 'react-toastify';
+import React, { useState, useEffect } from 'react';
+import * as api from '../../services/apiServices'; // Assuming this path
 
 const Home = () => {
     const [content, setContent] = useState('');
-    const [loading, setLoading] = useState(false); // Set to false initially, fetch on mount
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const fetchHomePageContent = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(null); // Clear previous errors
-            // Fetch content from the public API endpoint
-            const data = await apiFetch('/content/home', { isPublic: true });
-            setContent(data.content);
-        } catch (err) {
-            setError('Failed to load home page content. Please try again later.');
-            console.error(err);
-            toast.error('Failed to refresh home page content.');
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
     useEffect(() => {
-        fetchHomePageContent();
-    }, [fetchHomePageContent]); // Empty dependency array means this runs once on mount
+        const fetchContent = async () => {
+            try {
+                setLoading(true);
+                const data = await api.getHomePageContent();
+                setContent(data.content); // Assuming the API returns { content: "..." }
+            } catch (err) {
+                console.error("Failed to fetch homepage content:", err);
+                setError("Failed to load homepage content.");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchContent();
+    }, []); // Empty dependency array means it runs once on mount
 
-    const handleRefresh = useCallback(() => {
-        fetchHomePageContent();
-        toast.success('Home page content refreshed!');
-    }, [fetchHomePageContent]);
+    if (loading) return <p>Loading homepage content...</p>;
+    if (error) return <p className="text-danger">{error}</p>;
 
     return (
-        <Card className="shadow-sm">
-            <Card.Header as="h4" className="d-flex justify-content-between align-items-center">
-                <span>Welcome!</span>
-                <Button variant="outline-primary" size="sm" onClick={handleRefresh} disabled={loading}>
-                    {loading ? <Spinner animation="border" size="sm" /> : <i className="bi bi-arrow-clockwise me-1"></i>} Refresh
-                </Button>
-            </Card.Header>
-            <Card.Body>
-                {loading && <div className="text-center"><Spinner animation="border" /> <p>Loading...</p></div>}
-                {error && <Alert variant="danger">{error}</Alert>}
-                {!loading && !error && (
-                    // Use dangerouslySetInnerHTML to render the HTML content from the backend
-                    <div dangerouslySetInnerHTML={{ __html: content }} />
-                )}
-            </Card.Body>
-        </Card>
+        <div>
+            <h1>Welcome!</h1>
+            <div dangerouslySetInnerHTML={{ __html: content }} />
+        </div>
     );
 };
 

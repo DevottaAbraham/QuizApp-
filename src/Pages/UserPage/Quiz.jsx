@@ -108,12 +108,6 @@ const Quiz = ({ currentUser }) => {
         }
     };
 
-    const handlePrev = () => {
-        if (currentQuestionIndex > 0) {
-            setCurrentQuestionIndex(prev => prev - 1);
-        }
-    };
-
     const handleSubmitQuiz = async () => {
         if (Object.keys(userAnswers).length !== questions.length) {
             toast.warn("Please answer all questions before submitting.");
@@ -191,8 +185,7 @@ const Quiz = ({ currentUser }) => {
                     </ListGroup>
                 </Form>
             </Card.Body>
-            <Card.Footer className="d-flex justify-content-between">
-                <Button onClick={handlePrev} disabled={currentQuestionIndex === 0}>Previous</Button>
+            <Card.Footer className="d-flex justify-content-end">
                 {currentQuestionIndex === questions.length - 1 ? (
                     <Button onClick={handleSubmitQuiz} variant="success" disabled={submitting}>{submitting ? 'Submitting...' : 'Submit Quiz'}</Button>
                 ) : (

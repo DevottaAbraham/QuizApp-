@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Spinner, Alert, Row, Col, Button, Modal } from 'react-bootstrap';
 import { toast } from 'react-toastify';
+import { Link } from 'react-router-dom';
 // import * as api from '../services/apiServices.js';
 import * as api from '../../services/apiServices.js';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -109,7 +110,7 @@ const ViewScores = () => {
                     <h3>All User Scores</h3>
                 </Card.Header>
                 <Card.Body>
-                    <Table striped bordered hover responsive>
+                    <Table striped bordered hover responsive="sm">
                         <thead>
                             <tr>
                                 <th>User ID</th>
@@ -127,7 +128,7 @@ const ViewScores = () => {
                                     <td>{new Date(score.quizDate).toLocaleString()}</td>
                                     <td>{score.score}</td>
                                     <td>
-                                        <Button 
+                                        <Button
                                             variant="outline-primary" 
                                             size="sm"
                                             onClick={() => handleViewPerformance(score)}
@@ -156,7 +157,10 @@ const ViewScores = () => {
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="month" />
                                 <YAxis />
-                                <Tooltip formatter={(value, name) => [value.toFixed(2), 'Average Score']} />
+                                <Tooltip formatter={(value, name) => {
+                                    const numericValue = typeof value === 'number' ? value : 0;
+                                    return [numericValue.toFixed(2), 'Average Score'];
+                                }} />
                                 <Legend />
                                 <Line type="monotone" dataKey="averageScore" stroke="#8884d8" name="Average Score" />
                             </LineChart>

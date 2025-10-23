@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Form, Button, InputGroup, Alert, Modal } from 'react-bootstrap';
+import { Card, Form, Button, InputGroup, Alert } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
 import * as api from '../../services/apiServices';
@@ -7,8 +7,6 @@ import * as api from '../../services/apiServices';
 const AdminLogin = ({ onLogin, isSetupComplete }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [showForgotModal, setShowForgotModal] = useState(false);
-    const [forgotUsername, setForgotUsername] = useState('');
 
     const [loading, setLoading] = useState(false);
 
@@ -24,21 +22,6 @@ const AdminLogin = ({ onLogin, isSetupComplete }) => {
             // Error is handled by apiServices
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleForgotPassword = async () => {
-        if (!forgotUsername) {
-            toast.warn("Please enter the username of the admin account.");
-            return;
-        }
-        try {
-            const response = await api.forgotPasswordGenerateTemp(forgotUsername);
-            toast.success(<div><p>{response.message}</p><strong>New Password: {response.tempPassword}</strong></div>, { autoClose: 15000 });
-            setShowForgotModal(false);
-            setForgotUsername('');
-        } catch (error) {
-            // Error is already handled by apiServices
         }
     };
 
@@ -81,37 +64,12 @@ const AdminLogin = ({ onLogin, isSetupComplete }) => {
                                 />
                             </InputGroup>
                         </Form.Group>
-                        <div className="text-end mb-3">
-                            <Button variant="link" size="sm" onClick={() => setShowForgotModal(true)}>Forgot Password?</Button>
-                        </div>
                         <Button type="submit" variant="primary" className="w-100" disabled={loading}>
                             {loading ? 'Logging In...' : 'Login'}
                         </Button>
                     </Form>
                 </Card.Body>
             </Card>
-
-            <Modal show={showForgotModal} onHide={() => setShowForgotModal(false)} centered>
-                <Modal.Header closeButton>
-                    <Modal.Title>Reset Admin Password</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    <p>Enter the admin username to generate a new temporary password. The new password will be displayed here.</p>
-                    <Form.Group>
-                        <Form.Label>Admin Username</Form.Label>
-                        <Form.Control
-                            type="text"
-                            value={forgotUsername}
-                            onChange={(e) => setForgotUsername(e.target.value)}
-                            placeholder="Enter admin username"
-                        />
-                    </Form.Group>
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowForgotModal(false)}>Cancel</Button>
-                    <Button variant="primary" onClick={handleForgotPassword}>Generate New Password</Button>
-                </Modal.Footer>
-            </Modal>
         </div>
     );
 };

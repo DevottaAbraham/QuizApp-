@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Card, Button, Row, Col, Form, Badge, Alert, ButtonGroup, Table, Modal } from 'react-bootstrap';
-import jsPDF from 'jspdf'; 
-import 'jspdf-autotable';
+import { Card, Button, Row, Col, Form, Badge, Alert, ButtonGroup, Table, Modal, Nav } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import * as api from '../../services/apiServices';
-import { NotoSansTamil } from '../../assets/fonts/NotoSansTamil.js';
 
 
 const translations = {
@@ -20,9 +17,12 @@ const translations = {
         noQuizzes: "You have not taken any quizzes yet.",
         noResults: "No results found for the selected date range.",
         pdfTitle: (username) => `Quiz Performance History for ${username}`,
-        pdfHeaders: ['#', 'Date', 'Score'],
         correctAnswers: "Correctly Answered",
-        wrongAnswers: "Wrongly Answered",                                                                                                           
+        wrongAnswers: "Wrongly Answered",
+        viewDetails: "View Details",
+        downloadPDF: "Download PDF",
+        english: "English",
+        tamil: "Tamil",
     },
     ta: {
         title: "எனது செயல்திறன் வரலாறு",
@@ -35,9 +35,12 @@ const translations = {
         noQuizzes: "நீங்கள் இன்னும் எந்த வினாடி வினாவையும் எடுக்கவில்லை.",
         noResults: "தேர்ந்தெடுக்கப்பட்ட தேதி வரம்பிற்கு முடிவுகள் எதுவும் கிடைக்கவில்லை.",
         pdfTitle: (username) => `${username}க்கான வினாடி வினா செயல்திறன் வரலாறு`,
-        pdfHeaders: ['#', 'தேதி', 'மதிப்பெண்'],
         correctAnswers: "சரியாக பதிலளித்தவை",
         wrongAnswers: "தவறாக பதிலளித்தவை",
+        viewDetails: "விவரங்களைக் காண்க",
+        downloadPDF: "PDF பதிவிறக்கம்",
+        english: "ஆங்கிலம்",
+        tamil: "தமிழ்",
     }
 };
 
@@ -48,6 +51,7 @@ const PerformanceHistory = ({ currentUser }) => {
     const [endDate, setEndDate] = useState('');
     const [lang, setLang] = useState('en');
     const [showModal, setShowModal] = useState(false);
+    const [loadingModal, setLoadingModal] = useState(false);
     const [selectedResult, setSelectedResult] = useState(null);
 
     const t = translations[lang];
@@ -88,128 +92,37 @@ const PerformanceHistory = ({ currentUser }) => {
         setFilteredHistory(result);
     }, [startDate, endDate, history]);
 
-    const handleViewAnswersClick = (result) => {
+    const handleViewAnswersClick = async (result) => {
         setSelectedResult(result);
         setShowModal(true);
-    };
-
-    const generateReportHTML = (result, filterType) => {
-        const isCorrect = filterType === 'correct';
-        const title = isCorrect ? t.correctAnswers : t.wrongAnswers;
-        const answersToDisplay = result.answers.filter(a => a.isCorrect === isCorrect);
-
-        const answerItems = answersToDisplay.map((answer, i) => {
-            const questionHTML = `
-                <p class="question-text"><b>Q${i + 1}:</b> ${answer.questionText_en}</p>
-                <p class="question-text tamil">${answer.questionText_ta}</p>
-            `;
-
-            if (isCorrect) {
-                return `
-                    <div class="card correct">
-                        <div class="card-body">
-                            ${questionHTML}
-                            <p class="answer-text correct-text">Your Answer: ${answer.userAnswer}</p>
-                            <p class="answer-text correct-text tamil">உங்கள் பதில்: ${answer.userAnswer_ta}</p>
-                        </div>
-                    </div>
-                `;
-            } else {
-                return `
-                    <div class="card wrong">
-                        <div class="card-body">
-                            ${questionHTML}
-                            <p class="answer-text wrong-text">Your Answer: ${answer.userAnswer}</p>
-                            <p class="answer-text wrong-text tamil">உங்கள் பதில்: ${answer.userAnswer_ta}</p>
-                            <p class="answer-text info-text">Correct Answer: ${answer.correctAnswer}</p>
-                            <p class="answer-text info-text tamil">சரியான பதில்: ${answer.correctAnswer_ta}</p>
-                        </div>
-                    </div>
-                `;
+        // If the result doesn't have detailed answers, fetch them.
+        if (!result.answeredQuestions) {
+            setLoadingModal(true);
+            try {
+                const detailedResult = await api.getScoreDetail(result.quizId);
+                // Update the state for the modal
+                setSelectedResult(detailedResult);
+                // Also update the main history array so we don't fetch it again
+                setHistory(prev => prev.map(h => h.quizId === result.quizId ? detailedResult : h));
+            } catch (error) {
+                toast.error("Failed to load answer details.");
+                setShowModal(false);
+            } finally {
+                setLoadingModal(false);
             }
-        }).join('');
-
-        return `
-            <!DOCTYPE html>
-            <html lang="${lang}">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>${title} - Quiz Review</title>
-                <style>
-                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; padding: 20px; background-color: #f8f9fa; }
-                    .container { max-width: 800px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-                    h1, h2 { color: #333; }
-                    .card { border: 1px solid #ddd; border-radius: 5px; margin-bottom: 15px; }
-                    .card.correct { border-left: 5px solid #198754; }
-                    .card.wrong { border-left: 5px solid #dc3545; }
-                    .card-body { padding: 15px; }
-                    .tamil { font-style: italic; color: #555; }
-                    .question-text { font-size: 1.1em; margin-bottom: 10px; }
-                    .answer-text { margin: 5px 0; }
-                    .correct-text { color: #198754; }
-                    .wrong-text { color: #dc3545; }
-                    .info-text { color: #0dcaf0; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1>${title}</h1>
-                    <h2>Quiz on: ${formatDateTime(result.quizDate)}</h2>
-                    <hr>
-                    ${answersToDisplay.length > 0 ? answerItems : `<p>No answers in this category.</p>`}
-                </div>
-            </body>
-            </html>
-        `;
+        }
     };
 
-    const handleViewReport = (filterType) => {
+    const handleDownloadPDF = (pdfLang) => {
         if (!selectedResult) return;
-
-        const htmlContent = generateReportHTML(selectedResult, filterType);
-        const newWindow = window.open();
-        if (newWindow) {
-            newWindow.document.open();
-            newWindow.document.write(htmlContent);
-            newWindow.document.close();
-        }
+        const downloadUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:8081/api'}/scores/history/${selectedResult.quizId}/download?lang=${pdfLang}`;
+        window.open(downloadUrl, '_blank');
     };
 
     const formatDateTime = (dateString) => {
         if (!dateString) return 'N/A';
         const locale = lang === 'ta' ? 'ta-IN' : 'en-US';
         return new Date(dateString).toLocaleString(locale, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-    };
-
-    const generateSummaryPDF = () => {
-        const doc = new jsPDF();
-
-        // Add the Tamil font to jsPDF's virtual file system
-        doc.addFileToVFS("NotoSansTamil-Regular.ttf", NotoSansTamil);
-        doc.addFont("NotoSansTamil-Regular.ttf", "NotoSansTamil", "normal");
-
-        doc.setFont("NotoSansTamil", "normal");
-        doc.text(t.pdfTitle(currentUser.username), 14, 16); // Title in selected language
-
-        doc.autoTable({
-            startY: 20,
-            head: [t.pdfHeaders],
-            body: filteredHistory.map((item, i) => [ // This was using quizTimestamp which is incorrect
-                i + 1,
-                formatDateTime(item.quizTimestamp),
-                `${item.score} / ${item.totalQuestions}`
-            ]),
-            styles: {
-                font: "NotoSansTamil", // Use the font for the table content
-                fontStyle: 'normal',
-            },
-            headStyles: {
-                fontStyle: 'bold',
-            }
-        });
-
-        doc.save(`${currentUser.username}-performance-summary.pdf`);
     };
 
     if (!currentUser) {
@@ -225,9 +138,6 @@ const PerformanceHistory = ({ currentUser }) => {
                         <Button variant={lang === 'en' ? 'primary' : 'outline-primary'} onClick={() => setLang('en')}>EN</Button>
                         <Button variant={lang === 'ta' ? 'primary' : 'outline-primary'} onClick={() => setLang('ta')}>TA</Button>
                     </ButtonGroup>
-                    <Button variant="success" size="sm" onClick={generateSummaryPDF} disabled={filteredHistory.length === 0}>
-                        <i className="bi bi-download me-1"></i> {t.download}
-                    </Button>
                 </div>
             </Card.Header>
             <Card.Body>
@@ -263,12 +173,9 @@ const PerformanceHistory = ({ currentUser }) => {
                                 <tr key={index}>
                                     <td>{formatDateTime(result.quizDate)}</td>
                                     <td><Badge bg="primary">{result.score}</Badge> / <Badge bg="secondary">{result.totalQuestions}</Badge></td>
-                                    <td className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center">
-                                        <Button onClick={() => handleViewAnswersClick(result)} variant="info" size="sm" className="mb-2 mb-sm-0 me-sm-2 w-100 w-sm-auto">
-                                            <i className="bi bi-search me-1"></i> View Answers
-                                        </Button>
-                                        <Button as={Link} to={`/user/score/${result.quizId}`} variant="outline-info" size="sm" title="View in new page" className="w-100 w-sm-auto">
-                                            <i className="bi bi-box-arrow-up-right"></i>
+                                    <td className="text-center">
+                                        <Button onClick={() => handleViewAnswersClick(result)} variant="info" size="sm">
+                                            <i className="bi bi-search me-1"></i> {t.viewDetails}
                                         </Button>
                                     </td> 
                                 </tr>
@@ -285,20 +192,37 @@ const PerformanceHistory = ({ currentUser }) => {
             {selectedResult && (
                 <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" fullscreen="md-down" centered>
                     <Modal.Header closeButton>
-                        <Modal.Title>Answer Review: {formatDateTime(selectedResult.quizDate)}</Modal.Title>
+                        <Modal.Title>{t.viewDetails}: {formatDateTime(selectedResult.quizDate)}</Modal.Title>
                     </Modal.Header>
-                    <Modal.Body className="bg-body-tertiary">
-                        <p>Select a category to view the questions and your answers in a new tab.</p>
-                        <div className="d-grid gap-2">
-                            <Button variant="outline-success" onClick={() => handleViewReport('correct')}>
-                                <i className="bi bi-check-circle-fill me-2"></i>
-                                View {t.correctAnswers} ({selectedResult.score})
-                            </Button>
-                            <Button variant="outline-danger" onClick={() => handleViewReport('wrong')}>
-                                <i className="bi bi-x-circle-fill me-2"></i>
-                                View {t.wrongAnswers} ({selectedResult.totalQuestions - selectedResult.score})
-                            </Button>
-                        </div>
+                    <Modal.Body>
+                        {loadingModal ? (
+                            <div className="text-center">Loading details...</div>
+                        ) : (
+                            <>
+                                <Nav variant="pills" className="justify-content-center mb-3">
+                                    <Nav.Item>
+                                        <Nav.Link as={Link} to={`/user/score/${selectedResult.quizId}?filter=correct`} target="_blank" rel="noopener noreferrer" className="text-success">
+                                            {t.correctAnswers} ({selectedResult.score})
+                                        </Nav.Link>
+                                    </Nav.Item>
+                                    <Nav.Item>
+                                        <Nav.Link as={Link} to={`/user/score/${selectedResult.quizId}?filter=incorrect`} target="_blank" rel="noopener noreferrer" className="text-danger">
+                                            {t.wrongAnswers} ({selectedResult.totalQuestions - selectedResult.score})
+                                        </Nav.Link>
+                                    </Nav.Item>
+                                </Nav>
+                                <hr />
+                                <h5 className="text-center mb-3">{t.downloadPDF}</h5>
+                                <div className="d-grid gap-2 d-md-flex justify-content-md-center">
+                                    <Button variant="outline-success" onClick={() => handleDownloadPDF('en')}>
+                                        <i className="bi bi-file-earmark-pdf me-1"></i> {t.english}
+                                    </Button>
+                                    <Button variant="outline-success" onClick={() => handleDownloadPDF('ta')}>
+                                        <i className="bi bi-file-earmark-pdf me-1"></i> {t.tamil}
+                                    </Button>
+                                </div>
+                            </>
+                        )}
                     </Modal.Body>
                 </Modal>
             )}
