@@ -1,156 +1,115 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Card, Form, Row, Col, Spinner, Alert, Modal } from 'react-bootstrap';
-import { useOutletContext } from 'react-router-dom';
+import { Table, Button, Modal, Form, Spinner, Alert, Card } from 'react-bootstrap';
+import { getAdmins, createAdmin, deleteAdmin } from '../../services/apiServices';
 import { toast } from 'react-toastify';
-import * as api from '../../services/apiServices';
 
 const ManageAdmins = () => {
-    const [users, setUsers] = useState([]);
-    const [newUser, setNewUser] = useState({ username: '', password: '' });
-    const [showPasswordModal, setShowPasswordModal] = useState(false);
-    const [newPasswordInfo, setNewPasswordInfo] = useState({ username: '', password: '' });
-
+    const [admins, setAdmins] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const { currentAdmin } = useOutletContext();
+    const [error, setError] = useState(null);
+    const [showModal, setShowModal] = useState(false);
+    const [newAdmin, setNewAdmin] = useState({ username: '', password: '' });
 
-    const fetchUsers = async () => {
+    const fetchAdmins = async () => {
         try {
             setLoading(true);
-            setError('');
-            const fetchedUsers = await api.getUsers();
-            // Filter to only show admin users
-            setUsers(fetchedUsers.filter(u => u.role === 'ADMIN'));
+            const data = await getAdmins();
+            setAdmins(data);
+            setError(null);
         } catch (err) {
-            setError('Failed to load users. Please try again.');
+            setError('Failed to load admins.');
+            console.error(err);
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchUsers();
+        fetchAdmins();
     }, []);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setNewUser({ ...newUser, [name]: value });
+        setNewAdmin({ ...newAdmin, [name]: value });
     };
 
-    const handleAddUser = async (e) => {
+    const handleAddAdmin = async (e) => {
         e.preventDefault();
-        if (!newUser.username || !newUser.password) {
-            toast.warn("Please provide both a username and password.");
+        if (!newAdmin.username || !newAdmin.password) {
+            toast.error('Username and password are required.');
             return;
         }
-        if (users.some(u => u.username.toLowerCase() === newUser.username.toLowerCase())) {
-            toast.error("A user with this username already exists.");
-            return;
-        }
-
         try {
-            const createdUser = await api.createAdmin(newUser);
-            setUsers([...users, createdUser]); // Add to local state
-            toast.success(`Admin '${newUser.username}' created successfully.`);
-            setNewUser({ username: '', password: '' }); // Reset form
+            await createAdmin(newAdmin);
+            toast.success(`Admin '${newAdmin.username}' created successfully!`);
+            setShowModal(false);
+            setNewAdmin({ username: '', password: '' });
+            fetchAdmins(); // Refresh the list
         } catch (err) {
-            // Error toast is handled by apiService
-            console.error("Failed to create admin:", err);
+            toast.error(err.message || 'Failed to create admin.');
         }
     };
 
-    const handleDeleteUser = async (userId, username) => {
-        if (!window.confirm(`Are you sure you want to delete the admin '${username}'?`)) {
-            return;
-        }
-
-        try {
-            await api.deleteUser(userId);
-            setUsers(users.filter(u => u.id !== userId));
-            toast.success(`Admin '${username}' was deleted.`);
-        } catch (err) {
-            console.error("Failed to delete admin:", err);
-        }
-    };
-
-    const handleResetPassword = async (user) => {
-        if (user.id === currentAdmin?.id) {
-            toast.warn("You cannot reset your own password from this screen.");
-            return;
-        }
-        if (!window.confirm(`Are you sure you want to reset the password for admin "${user.username}"?`)) {
-            return;
-        }
-        try {
-            const result = await api.resetUserPassword(user.id);
-            setNewPasswordInfo({ username: user.username, password: result.newPassword });
-            setShowPasswordModal(true);
-            toast.success(`Password for ${user.username} has been reset.`);
-        } catch (err) {
-            // Error toast is handled by apiService
+    const handleDeleteAdmin = async (adminId, adminUsername) => {
+        if (window.confirm(`Are you sure you want to delete admin '${adminUsername}'? This cannot be undone.`)) {
+            try {
+                await deleteAdmin(adminId);
+                toast.success(`Admin '${adminUsername}' deleted successfully.`);
+                fetchAdmins(); // Refresh the list
+            } catch (err) {
+                toast.error(err.message || 'Failed to delete admin.');
+            }
         }
     };
 
     return (
-        <>
-            <Row>
-                <Col lg={4}>
-                    <Card className="shadow-sm mb-4">
-                        <Card.Header as="h5"><i className="bi bi-person-plus-fill me-2"></i>Add New Admin</Card.Header>
-                        <Card.Body>
-                            <Form onSubmit={handleAddUser}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Username</Form.Label>
-                                    <Form.Control type="text" name="username" value={newUser.username} onChange={handleInputChange} required placeholder="New admin username" />
-                                </Form.Group>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Password</Form.Label>
-                                    <Form.Control type="password" name="password" value={newUser.password} onChange={handleInputChange} required placeholder="Temporary password" />
-                                </Form.Group>
-                                <Button type="submit" variant="primary" className="w-100">Add Admin</Button>
-                            </Form>
-                        </Card.Body>
-                    </Card>
-                </Col>
-                <Col lg={8}>
-                    <Card className="shadow-sm">
-                        <Card.Header as="h5"><i className="bi bi-people-fill me-2"></i>Current Administrators</Card.Header>
-                        <Card.Body>
-                            {loading && <div className="text-center"><Spinner animation="border" /></div>}
-                            {error && <Alert variant="danger">{error}</Alert>}
-                            {!loading && !error && (
-                                <Table striped bordered hover responsive>
-                                    <thead>
-                                        <tr><th>ID</th><th>Username</th><th>Actions</th></tr>
-                                    </thead>
-                                    <tbody>
-                                        {users.map(user => (
-                                            <tr key={user.id}>
-                                                <td>{user.id}</td>
-                                                <td>{user.username}</td>
-                                                <td>
-                                                    <Button variant="outline-warning" size="sm" className="me-2" onClick={() => handleResetPassword(user)} disabled={user.id === currentAdmin?.id}>Reset Password</Button>
-                                                    <Button variant="outline-danger" size="sm" onClick={() => handleDeleteUser(user.id, user.username)} disabled={user.id === currentAdmin?.id || user.username === 'admin'}>Remove</Button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </Table>
-                            )}
-                        </Card.Body>
-                    </Card>
-                </Col>
-            </Row>
-            <Modal show={showPasswordModal} onHide={() => setShowPasswordModal(false)} centered>
-                <Modal.Header closeButton><Modal.Title>Password Reset Successful</Modal.Title></Modal.Header>
+        <Card>
+            <Card.Header className="d-flex justify-content-between align-items-center">
+                <h4>Manage Administrators</h4>
+                <Button variant="primary" onClick={() => setShowModal(true)}>
+                    <i className="bi bi-plus-circle-fill me-2"></i>Add New Admin
+                </Button>
+            </Card.Header>
+            <Card.Body>
+                {loading && <div className="text-center"><Spinner animation="border" /></div>}
+                {error && <Alert variant="danger">{error}</Alert>}
+                {!loading && !error && (
+                    <Table striped bordered hover responsive>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Username</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {admins.map((admin, index) => (
+                                <tr key={admin.id}>
+                                    <td>{index + 1}</td>
+                                    <td>{admin.username}</td>
+                                    <td>
+                                        <Button variant="danger" size="sm" onClick={() => handleDeleteAdmin(admin.id, admin.username)}>
+                                            <i className="bi bi-trash-fill"></i> Delete
+                                        </Button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </Table>
+                )}
+            </Card.Body>
+
+            <Modal show={showModal} onHide={() => setShowModal(false)}>
+                <Modal.Header closeButton><Modal.Title>Add New Admin</Modal.Title></Modal.Header>
                 <Modal.Body>
-                    <p>The password for admin <strong>{newPasswordInfo.username}</strong> has been changed.</p>
-                    <p>Please copy the new password and provide it to the user:</p>
-                    <Alert variant="info" className="text-center"><strong className="fs-5 font-monospace">{newPasswordInfo.password}</strong></Alert>
+                    <Form onSubmit={handleAddAdmin}>
+                        <Form.Group className="mb-3"><Form.Label>Username</Form.Label><Form.Control type="text" name="username" value={newAdmin.username} onChange={handleInputChange} required /></Form.Group>
+                        <Form.Group className="mb-3"><Form.Label>Password</Form.Label><Form.Control type="password" name="password" value={newAdmin.password} onChange={handleInputChange} required /></Form.Group>
+                        <Button variant="primary" type="submit">Create Admin</Button>
+                    </Form>
                 </Modal.Body>
-                <Modal.Footer><Button variant="primary" onClick={() => setShowPasswordModal(false)}>Close</Button></Modal.Footer>
             </Modal>
-        </>
+        </Card>
     );
 };
 

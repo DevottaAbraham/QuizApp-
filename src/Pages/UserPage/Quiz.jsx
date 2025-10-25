@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useOutletContext } from 'react-router-dom';
 import { Card, Button, Form, ProgressBar, Alert, Spinner, ButtonGroup, ListGroup, Modal } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import * as api from '../../services/apiServices';
 
-const Quiz = ({ currentUser }) => {
+const Quiz = () => {
+    const { currentUser } = useOutletContext();
     const [questions, setQuestions] = useState([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [selectedOption, setSelectedOption] = useState('');

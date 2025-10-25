@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Card, Form, Button, InputGroup, Alert } from 'react-bootstrap';
 import { toast } from 'react-toastify';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import * as api from '../../services/apiServices';
 
-const AdminLogin = ({ onLogin, isSetupComplete }) => {
+const AdminLogin = ({ isSetupComplete }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const navigate = useNavigate();
 
     const [loading, setLoading] = useState(false);
 
@@ -14,9 +15,10 @@ const AdminLogin = ({ onLogin, isSetupComplete }) => {
         e.preventDefault();
         setLoading(true);
         try {
-            const user = await api.login(username, password);
-            if (user) {
-                onLogin(user);
+            const user = await api.login(username, password, 'ADMIN');
+            if (user && user.role === 'ADMIN') {
+                toast.success("Admin login successful!");
+                navigate('/admin/dashboard');
             }
         } catch (error) {
             // Error is handled by apiServices

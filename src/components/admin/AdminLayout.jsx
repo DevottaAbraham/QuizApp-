@@ -1,69 +1,73 @@
-import React, { useState } from 'react';
-import { Link, Outlet } from 'react-router-dom';
-import { Navbar, Nav, Container, Button, NavDropdown, Form } from 'react-bootstrap';
-import { AdminContext } from './AdminContext';
+import React, { useState, useEffect } from 'react';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import AdminNavbar from './AdminNavbar';
+import { getCurrentUser, logout } from '../../services/apiServices';
+import { toast } from 'react-toastify';
+import { Container, Spinner } from 'react-bootstrap';
+
 /**
  * Renders the main application layout for a logged-in admin.
  * This component is wrapped in Routes and can safely use router hooks.
  */
-const AdminLayout = ({ currentAdmin, onLogout, theme, toggleTheme }) => {
-  const [expanded, setExpanded] = useState(false);
+const AdminLayout = ({ theme, toggleTheme }) => {
+    const [currentAdmin, setCurrentAdmin] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
+    const location = useLocation(); // Get the current location
 
-  const handleLogout = () => {
-    onLogout();
-  };
-  
-  return (
-    <AdminContext.Provider value={{ currentAdmin }}>
-      <Navbar bg="dark" variant="dark" expand="lg" className="sticky-top shadow" expanded={expanded}>
-        <Container fluid>
-          <Navbar.Brand as={Link} to="/admin/dashboard">Admin Panel</Navbar.Brand>
-          <Navbar.Toggle aria-controls="adminNavbar" onClick={() => setExpanded((prev) => !prev)} />
-          <Navbar.Collapse id="adminNavbar">
-            <Nav className="me-auto">
-              <Nav.Link as={Link} to="/admin/dashboard" onClick={() => setExpanded(false)}><i className="bi bi-grid-1x2-fill me-1"></i>Dashboard</Nav.Link>
-              <NavDropdown title={<><i className="bi bi-journal-text me-1"></i>Questions</>} id="questions-dropdown">
-                <NavDropdown.Item as={Link} to="/admin/questions" onClick={() => setExpanded(false)}>Add/Edit Questions</NavDropdown.Item>
-                <NavDropdown.Item as={Link} to="/admin/publish" onClick={() => setExpanded(false)}>Publish Queue</NavDropdown.Item>
-                <NavDropdown.Item as={Link} to="/admin/history" onClick={() => setExpanded(false)}>Question History</NavDropdown.Item>
-              </NavDropdown>
-              {/* Only show the Manage Admins link if the logged-in admin is the main 'admin' user */}
-              {currentAdmin?.username === 'admin' && <Nav.Link as={Link} to="/admin/manage-admins" onClick={() => setExpanded(false)}><i className="bi bi-person-badge-fill me-1"></i>Manage Admins</Nav.Link>}
-              <Nav.Link as={Link} to="/admin/users" onClick={() => setExpanded(false)}><i className="bi bi-person-gear me-1"></i>Users</Nav.Link>              
-              <Nav.Link as={Link} to="/admin/appearance" onClick={() => setExpanded(false)}><i className="bi bi-palette-fill me-1"></i>Appearance</Nav.Link>
-              <NavDropdown title={<><i className="bi bi-tools me-1"></i> More</>} id="admin-more-dropdown">
-                <NavDropdown.Item as={Link} to="/admin/leaderboard" onClick={() => setExpanded(false)}><i className="bi bi-trophy-fill me-2"></i>Leaderboard</NavDropdown.Item>
-                <NavDropdown.Item as={Link} to="/admin/scores" onClick={() => setExpanded(false)}><i className="bi bi-clipboard2-pulse-fill me-2"></i>View Scores</NavDropdown.Item>                
-                <NavDropdown.Item as={Link} to="/admin/users/active" onClick={() => setExpanded(false)}><i className="bi bi-card-checklist me-2"></i>Active Users</NavDropdown.Item>
-                {/* Add other dropdown items here */}
-              </NavDropdown>
-            </Nav>
-            <Nav className="ms-auto align-items-center">
-              <Navbar.Text className="my-2 my-lg-0 me-lg-3">
-                Welcome, <span className="fw-bold">{currentAdmin?.username}</span>
-              </Navbar.Text>
-              <Form.Check
-                  type="switch"
-                  id="admin-theme-switch"
-                  checked={theme === 'dark'}
-                  onChange={toggleTheme}
-                  label={theme === 'light' ? <i className="bi bi-brightness-high-fill fs-5"></i> : <i className="bi bi-moon-stars-fill fs-5"></i>}
-                  className="d-flex align-items-center my-2 my-lg-0 mx-lg-3"
-                  title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-              />
-              <Button variant="outline-light" onClick={handleLogout} className="my-2 my-lg-0">
-                <i className="bi bi-shield-slash-fill me-1"></i> Logout
-              </Button>
-            </Nav>
-          </Navbar.Collapse>
-        </Container>
-      </Navbar>
+    useEffect(() => {
+        // Only run the admin check if we are on an admin path.
+        if (location.pathname.startsWith('/admin')) {
+            const fetchAdminUser = async () => {
+                try {
+                    const user = await getCurrentUser();
+                    if (user && user.role === 'ADMIN') {
+                        setCurrentAdmin(user);
+                    } else {
+                        // This case handles when a non-admin tries to access an admin URL directly.
+                        toast.error("Access Denied. Admin privileges required.");
+                        navigate('/admin/login');
+                    }
+                } catch (error) {
+                    toast.error("Session expired. Please log in.");
+                    navigate('/admin/login');
+                } finally {
+                    setLoading(false);
+                }
+            };
+            fetchAdminUser();
+        }
+    }, [navigate, location]); // CRITICAL FIX: Add location to re-run this on every navigation change
 
-      <main className="container-fluid mt-4">
-        <Outlet context={{ currentAdmin }} />
-      </main>
-    </AdminContext.Provider>
-  );
+    const handleLogout = async () => {
+        try {
+            await logout('ADMIN');
+            setCurrentAdmin(null);
+            toast.info("You have been logged out.");
+            navigate('/admin/login');
+        } catch (error) {
+            toast.error("Logout failed. Please try again.");
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="d-flex justify-content-center align-items-center vh-100">
+                <Spinner animation="border" role="status">
+                    <span className="visually-hidden">Loading Admin Panel...</span>
+                </Spinner>
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <AdminNavbar currentUser={currentAdmin} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />
+            <main className="container-fluid mt-4">
+                <Outlet context={{ currentAdmin }} />
+            </main>
+        </>
+    );
 };
 
 export default AdminLayout;

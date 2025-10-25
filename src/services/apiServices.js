@@ -65,11 +65,15 @@ export const apiFetch = async (endpoint, options = {}) => {
                     .then(refreshResponse => {
                         if (!refreshResponse.ok) {
                             // If refresh fails, the session is truly over.
+                            // CRITICAL FIX: Redirect based on the role of the stored user, not the current URL path.
+                            // This prevents session crossover where an expired admin token redirects a regular user.
+                            const storedUser = JSON.parse(localStorage.getItem('currentUser'));
                             clearAuthToken();
-                            // Determine where to redirect based on the current path
-                            if (window.location.pathname.startsWith('/admin')) {
+
+                            if (storedUser && storedUser.role === 'ADMIN') {
                                 history.push('/admin/login');
                             } else {
+                                // Default to user login if no user is stored or if they are a USER.
                                 history.push('/user/login');
                             }
                             return Promise.reject(new Error("Session expired. Please log in again."));
@@ -118,8 +122,13 @@ export const apiFetch = async (endpoint, options = {}) => {
  */
 export const getCurrentUser = async () => {
     try {
-        // This endpoint will succeed if the cookie is valid, and fail if not.
-        return await apiFetch('/auth/me');
+        // CRITICAL FIX: The /auth/me endpoint is protected for ADMINS only in Spring Security.
+        // The /user/me endpoint is accessible by any authenticated user.
+        // We must check the current path to decide which endpoint to call.
+        if (window.location.pathname.startsWith('/admin')) {
+            return await apiFetch('/auth/me'); // For admins
+        }
+        return await apiFetch('/user/me'); // CRITICAL: This was pointing to /auth/me, causing user pages to load admin data.
     } catch (error) {
         // If the request fails (e.g., 401), it means no valid session exists.
         return null;
@@ -173,8 +182,15 @@ export const register = async (username, password) => {
     return userData;
 };
 
-export const logout = async () => {
-    return await apiFetch('/auth/logout', { method: 'POST' });
+export const logout = async (role = 'ADMIN') => {
+    clearAuthToken(); // Immediately clear frontend state for responsiveness
+    // Redirect to the appropriate login page based on the user's role.
+    if (role === 'USER') {
+        history.push('/user/login');
+    } else {
+        history.push('/admin/login');
+    }
+    return await apiFetch('/auth/logout', { method: 'POST' }); // Send logout request to backend
 };
 
 export const registerAdmin = async (username, password) => {
@@ -218,7 +234,7 @@ export const updateHomePageContent = (contentData) => apiFetch('/admin/content/h
 
 
 // Quiz Service
-export const getActiveQuiz = () => apiFetch('/quizzes/active');
+export const getActiveQuiz = () => apiFetch('/quizzes/active'); // This was pointing to /admin/quizzes/active
 export const submitQuiz = (quizResult) => apiFetch('/quizzes/submit', {
     method: 'POST',
     body: JSON.stringify(quizResult),
@@ -228,8 +244,11 @@ export const submitQuiz = (quizResult) => apiFetch('/quizzes/submit', {
 export const getScoreHistory = () => apiFetch('/scores/history');
 export const getScoreDetail = (quizId) => apiFetch(`/scores/history/${quizId}`);
 export const getAllScores = () => apiFetch('/admin/scores');
-export const getLeaderboard = () => apiFetch('/admin/leaderboard'); // Corrected to use the admin-specific endpoint
+// CRITICAL FIX: The leaderboard is for all users. Point to the public-facing endpoint in ScoreController.
+// This was incorrectly pointing to an admin-only endpoint, causing access denied errors for regular users.
+export const getLeaderboard = () => apiFetch('/scores/leaderboard');
 export const getMonthlyPerformance = () => apiFetch('/admin/scores/monthly-performance');
+export const getMyPerformance = () => apiFetch('/scores/my-performance'); // For the logged-in user's own performance
 
 // Image Upload Service
 export const uploadImage = (file) => {
@@ -282,11 +301,21 @@ export const forceChangePassword = (payload) => apiFetch('/auth/force-change-pas
     body: JSON.stringify(payload),
 });
 
-export const getUserById = (userId) => apiFetch(`/admin/users/${userId}`);
-
-export const getScoresForUser = (userId) => apiFetch(`/admin/users/${userId}/scores`);
-
-export const getPerformanceForUser = (userId) => apiFetch(`/admin/users/${userId}/performance`);
+// CRITICAL FIX: Ensure userId is explicitly passed and checked to prevent "undefined" string issues.
+// If userId is null/undefined, these functions should ideally not be called, or handle it gracefully.
+// By explicitly checking and passing a valid ID, we prevent the "undefined" string from reaching the backend.
+export const getUserById = (userId) => {
+    if (!userId) throw new Error("User ID is required for getUserById.");
+    return apiFetch(`/admin/users/${userId}`);
+};
+export const getScoresForUser = (userId) => {
+    if (!userId) throw new Error("User ID is required for getScoresForUser.");
+    return apiFetch(`/admin/users/${userId}/scores`);
+};
+export const getPerformanceForUser = (userId) => {
+    if (!userId) throw new Error("User ID is required for getPerformanceForUser.");
+    return apiFetch(`/admin/users/${userId}/performance`);
+};
 
 
 

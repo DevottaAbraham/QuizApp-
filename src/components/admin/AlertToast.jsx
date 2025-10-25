@@ -7,7 +7,7 @@ const AlertToast = ({ show, message, variant, onClose }) => {
             <Toast
                 onClose={onClose}
                 show={show}
-                delay={1000}
+                delay={1500}
                 autohide
                 bg={variant}
                 className="text-white"

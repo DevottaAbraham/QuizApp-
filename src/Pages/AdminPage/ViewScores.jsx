@@ -2,19 +2,19 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Spinner, Alert, Row, Col, Button, Modal } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
-// import * as api from '../services/apiServices.js';
 import * as api from '../../services/apiServices.js';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useNavigate } from 'react-router-dom';
+import { Bar } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const ViewScores = () => {
     const [scores, setScores] = useState([]);
-    const [performanceData, setPerformanceData] = useState([]);
+    const [performanceData, setPerformanceData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [showModal, setShowModal] = useState(false);
-    const [selectedUser, setSelectedUser] = useState(null);
-    const [userPerformanceData, setUserPerformanceData] = useState([]);
-    const [loadingModal, setLoadingModal] = useState(false);
+    const [error, setError] = useState(null);
+    const navigate = useNavigate(); // Initialize useNavigate hook
 
     const fetchAllScores = useCallback(async () => {
         try {
@@ -25,15 +25,17 @@ const ViewScores = () => {
             ]);
             setScores(scoresData);
 
-            // Calculate month-over-month change
-            const chartDataWithChange = performanceChartData.map((current, index, arr) => {
-                if (index === 0) return { ...current, change: 0 };
-                const previous = arr[index - 1];
-                const change = ((current.averageScore - previous.averageScore) / previous.averageScore) * 100;
-                return { ...current, change: change.toFixed(2) };
-            });
-
-            setPerformanceData(chartDataWithChange);
+            // Prepare data for Chart.js
+            const chartData = {
+                labels: performanceChartData.map(d => d.month),
+                datasets: [{
+                    label: 'Overall Average Score (%)',
+                    data: performanceChartData.map(d => d.averageScore),
+                    backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                    borderColor: 'rgb(255, 99, 132)',
+                }]
+            };
+            setPerformanceData(chartData);
         } catch (err) {
             setError('Failed to load scores or performance data.');
             // Toast is already handled by apiServices
@@ -46,19 +48,9 @@ const ViewScores = () => {
         fetchAllScores();
     }, [fetchAllScores]);
 
-    const handleViewPerformance = async (user) => {
-        setSelectedUser(user);
-        setShowModal(true);
-        setLoadingModal(true);
-        try {
-            const data = await api.getPerformanceForUser(user.userId);
-            setUserPerformanceData(data);
-        } catch (err) {
-            toast.error(`Failed to load performance for ${user.username}`);
-            setShowModal(false);
-        } finally {
-            setLoadingModal(false);
-        }
+    // CRITICAL FIX: Navigate to the dedicated user performance page
+    const handleViewPerformance = (userId) => {
+        navigate(`/admin/users/${userId}/performance`);
     };
 
     if (loading) {
@@ -73,6 +65,25 @@ const ViewScores = () => {
         return <Alert variant="danger">{error}</Alert>;
     }
 
+    const chartOptions = {
+        responsive: true,
+        plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: 'Overall Monthly Performance Trend' },
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 100,
+                title: { display: true, text: 'Average Score (%)' }
+            }
+        },
+        animation: {
+            duration: 1000,
+            easing: 'easeInOutQuad',
+        }
+    };
+
     return (
         <>
             <Card className="mb-4">
@@ -80,25 +91,10 @@ const ViewScores = () => {
                     <h3>Monthly Performance Trend (Average Score)</h3>
                 </Card.Header>
                 <Card.Body>
-                    {performanceData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={300}>
-                            <LineChart data={performanceData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="month" />
-                                <YAxis />
-                                <Tooltip formatter={(value, name) => {                                    
-                                    const numericValue = typeof value === 'number' ? value : 0;
-                                    if (name === 'MoM Change') {
-                                        return [`${numericValue.toFixed(2)}%`, 'Month-over-Month Change'];
-                                    }
-                                    // For 'Average Score'
-                                    return [numericValue.toFixed(2), name];
-                                }} />
-                                <Legend />
-                                <Line type="monotone" dataKey="averageScore" stroke="#8884d8" activeDot={{ r: 8 }} name="Average Score" />
-                                <Line type="monotone" dataKey="change" stroke="#82ca9d" name="MoM Change" unit="%" yAxisId={0} />
-                            </LineChart>
-                        </ResponsiveContainer>
+                    {performanceData && performanceData.labels && performanceData.labels.length > 0 ? (
+                        <div style={{ height: '300px' }}>
+                            <Bar options={chartOptions} data={performanceData} />
+                        </div>
                     ) : (
                         <p className="text-center">Not enough data to display performance trends.</p>
                     )}
@@ -113,25 +109,25 @@ const ViewScores = () => {
                     <Table striped bordered hover responsive="sm">
                         <thead>
                             <tr>
-                                <th>User ID</th>
                                 <th>Username</th>
                                 <th>Quiz Date</th>
                                 <th>Score</th>
+                                <th>Total Questions</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {scores.length > 0 && scores.map((score) => (
-                                <tr key={score.quizId}>
-                                    <td>{score.userId}</td>
+                                <tr key={score.id}>
                                     <td>{score.username}</td>
                                     <td>{new Date(score.quizDate).toLocaleString()}</td>
-                                    <td>{score.score}</td>
+                                    <td>{score.score} / {score.totalQuestions}</td>
+                                    <td>{score.totalQuestions}</td>
                                     <td>
                                         <Button
                                             variant="outline-primary" 
                                             size="sm"
-                                            onClick={() => handleViewPerformance(score)}
+                                            onClick={() => handleViewPerformance(score.userId)} // Ensure score.userId is always a valid number
                                         >
                                             View Performance
                                         </Button>
@@ -144,37 +140,6 @@ const ViewScores = () => {
                 </Card.Body>
             </Card>
 
-            <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
-                <Modal.Header closeButton>
-                    <Modal.Title>Performance for {selectedUser?.username}</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    {loadingModal ? (
-                        <div className="text-center"><Spinner animation="border" /></div>
-                    ) : userPerformanceData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={300}>
-                            <LineChart data={userPerformanceData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="month" />
-                                <YAxis />
-                                <Tooltip formatter={(value, name) => {
-                                    const numericValue = typeof value === 'number' ? value : 0;
-                                    return [numericValue.toFixed(2), 'Average Score'];
-                                }} />
-                                <Legend />
-                                <Line type="monotone" dataKey="averageScore" stroke="#8884d8" name="Average Score" />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    ) : (
-                        <Alert variant="info">No performance data available for this user.</Alert>
-                    )}
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowModal(false)}>
-                        Close
-                    </Button>
-                </Modal.Footer>
-            </Modal>
         </>
     );
 };

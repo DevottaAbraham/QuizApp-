@@ -4,9 +4,10 @@ import { setAuthToken, clearAuthToken } from '../services/apiServices';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
+  // Always start with no user authenticated. This will force a login.
   const [authenticatedUser, setAuthenticatedUser] = useState(() => {
-    const storedUser = localStorage.getItem('currentUser');
-    return storedUser ? JSON.parse(storedUser) : null;
+    // By returning null, we ensure the app always starts at the login screen.
+    return null;
   });
 
   const setUser = (user) => {

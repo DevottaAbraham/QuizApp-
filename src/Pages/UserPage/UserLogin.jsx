@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Card, Nav, Form, Button, InputGroup, FormControl } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import * as api from '../../services/apiServices';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
-const UserLogin = ({ onLogin }) => {
+const UserLogin = () => {
     const [activeTab, setActiveTab] = useState('signup');
     const [loginUsername, setLoginUsername] = useState('');
     const [loginPassword, setLoginPassword] = useState('');
     const [signupUsername, setSignupUsername] = useState('');
     const [signupPassword, setSignupPassword] = useState('');
+    const navigate = useNavigate();
 
     const generateUserPassword = () => {
         const password = Math.random().toString(36).slice(-8);
@@ -24,8 +25,9 @@ const UserLogin = ({ onLogin }) => {
         }
         try {
             const user = await api.login(loginUsername, loginPassword);
-            if (user) {
-                onLogin(user);
+            if (user && user.role === 'USER') {
+                toast.success(`Welcome back, ${user.username}!`);
+                navigate('/user/home');
             }
         } catch (error) {
             // The service already showed a toast, but we could add more specific UI changes here.
@@ -40,9 +42,9 @@ const UserLogin = ({ onLogin }) => {
         try {
             // The `register` service function handles both registration and automatic login in one step.
             const newUser = await api.register(signupUsername, signupPassword);
-            if (newUser) { // The presence of newUser indicates a successful registration and auto-login
+            if (newUser && newUser.role === 'USER') { // The presence of newUser indicates a successful registration and auto-login
                 toast.success(`User '${signupUsername}' created successfully! Welcome!`);
-                onLogin(newUser);
+                navigate('/user/home');
             }
         } catch (error) {
             // The service already showed a toast.

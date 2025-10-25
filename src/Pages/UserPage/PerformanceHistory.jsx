@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Card, Button, Row, Col, Form, Badge, Alert, ButtonGroup, Table, Modal, Nav } from 'react-bootstrap';
+import { Link, useOutletContext } from 'react-router-dom';
+import { Card, Button, Row, Col, Form, Badge, Alert, ButtonGroup, Table, Modal } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import * as api from '../../services/apiServices';
 
@@ -44,7 +44,7 @@ const translations = {
     }
 };
 
-const PerformanceHistory = ({ currentUser }) => {
+const PerformanceHistory = () => {
     const [history, setHistory] = useState([]);
     const [filteredHistory, setFilteredHistory] = useState([]);
     const [startDate, setStartDate] = useState('');
@@ -53,6 +53,7 @@ const PerformanceHistory = ({ currentUser }) => {
     const [showModal, setShowModal] = useState(false);
     const [loadingModal, setLoadingModal] = useState(false);
     const [selectedResult, setSelectedResult] = useState(null);
+    const { currentUser } = useOutletContext();
 
     const t = translations[lang];
 
@@ -199,18 +200,7 @@ const PerformanceHistory = ({ currentUser }) => {
                             <div className="text-center">Loading details...</div>
                         ) : (
                             <>
-                                <Nav variant="pills" className="justify-content-center mb-3">
-                                    <Nav.Item>
-                                        <Nav.Link as={Link} to={`/user/score/${selectedResult.quizId}?filter=correct`} target="_blank" rel="noopener noreferrer" className="text-success">
-                                            {t.correctAnswers} ({selectedResult.score})
-                                        </Nav.Link>
-                                    </Nav.Item>
-                                    <Nav.Item>
-                                        <Nav.Link as={Link} to={`/user/score/${selectedResult.quizId}?filter=incorrect`} target="_blank" rel="noopener noreferrer" className="text-danger">
-                                            {t.wrongAnswers} ({selectedResult.totalQuestions - selectedResult.score})
-                                        </Nav.Link>
-                                    </Nav.Item>
-                                </Nav>
+                                <p>You can download a PDF of your answers for this quiz in English or Tamil.</p>
                                 <hr />
                                 <h5 className="text-center mb-3">{t.downloadPDF}</h5>
                                 <div className="d-grid gap-2 d-md-flex justify-content-md-center">

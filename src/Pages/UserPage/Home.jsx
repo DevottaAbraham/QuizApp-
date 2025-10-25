@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import * as api from '../../services/apiServices'; // Assuming this path
+import { Card, Button, Spinner, Alert } from 'react-bootstrap';
+import * as api from '../../services/apiServices';
+import { Link } from 'react-router-dom';
+import { useOutletContext } from 'react-router-dom';
 
 const Home = () => {
+    const { currentUser } = useOutletContext();
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -9,27 +13,42 @@ const Home = () => {
     useEffect(() => {
         const fetchContent = async () => {
             try {
-                setLoading(true);
-                const data = await api.getHomePageContent();
-                setContent(data.content); // Assuming the API returns { content: "..." }
+                const homeContent = await api.getHomePageContent();
+                setContent(homeContent.content);
             } catch (err) {
-                console.error("Failed to fetch homepage content:", err);
-                setError("Failed to load homepage content.");
+                setError('Failed to load home page content.');
+                console.error(err);
             } finally {
                 setLoading(false);
             }
         };
-        fetchContent();
-    }, []); // Empty dependency array means it runs once on mount
 
-    if (loading) return <p>Loading homepage content...</p>;
-    if (error) return <p className="text-danger">{error}</p>;
+        fetchContent();
+    }, []);
+
+    if (loading) {
+        return <div className="text-center"><Spinner animation="border" /></div>;
+    }
+
+    if (error) {
+        return <Alert variant="danger">{error}</Alert>;
+    }
 
     return (
-        <div>
-            <h1>Welcome!</h1>
-            <div dangerouslySetInnerHTML={{ __html: content }} />
-        </div>
+        <Card className="shadow-sm">
+            <Card.Body className="p-4">
+                <div dangerouslySetInnerHTML={{ __html: content }} />
+                <hr />
+                <div className="d-grid gap-2 mt-4">
+                    <Button as={Link} to="/user/quiz" variant="primary" size="lg">
+                        Today's Questions
+                    </Button>
+                    <Button as={Link} to="/user/history" variant="outline-secondary">
+                        View My Score History
+                    </Button>
+                </div>
+            </Card.Body>
+        </Card>
     );
 };
 

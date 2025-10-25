@@ -1,79 +1,88 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Button } from 'react-bootstrap';
+import { Card, Table, Button, Spinner, Alert } from 'react-bootstrap';
 import pptxgen from "pptxgenjs";
+import { getLeaderboard } from '../../services/apiServices';
 
 const Leaderboard = () => {
-    const [sortedScores, setSortedScores] = useState([]);
+    const [leaderboardData, setLeaderboardData] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
-        const calculateScores = () => {
-            const allUsers = JSON.parse(localStorage.getItem("quizUsers")) || [];
-            const allScores = allUsers.map(user => {
-                const history = JSON.parse(localStorage.getItem(`quizHistory_${user.userId}`)) || [];
-                if (history.length === 0) return null;
-
-                // Find the best score from the user's history
-                const scores = history.map(h => h.score).filter(s => typeof s === 'number');
-                if (scores.length === 0) return null;
-
-                const bestScore = Math.max(...scores);
-                return {
-                    userId: user.userId, username: user.username, score: bestScore
-                };
-            }).filter(Boolean);
-
-            setSortedScores(allScores.sort((a, b) => b.score - a.score));
-        };
-
-        calculateScores();
-
-        window.addEventListener('storageUpdated', calculateScores);
-
-        return () => {
-            window.removeEventListener('storageUpdated', calculateScores);
-        };
+        getLeaderboard()
+            .then(data => {
+                setLeaderboardData(data);
+            })
+            .catch(err => {
+                setError('Failed to load leaderboard data.');
+                console.error(err);
+            })
+            .finally(() => {
+                setLoading(false);
+            });
     }, []);
 
     const handleDownloadPPT = () => {
         let pptx = new pptxgen();
         let slide = pptx.addSlide();
 
-        slide.addText("Quiz Leaderboard", { x: 1, y: 1, fontSize: 24, bold: true, color: "363636" });
-
+        // Updated title text and color as per user request
+        slide.addText("Top 5 Scores in Todays Quiz", { x: 1, y: 1, fontSize: 32, bold: true, color: "FFD700" });
+        
+        // Updated table structure to Rank, Name, and Score with better column spacing.
+        // Every cell is an object with a `text` property to avoid TypeErrors.
         const tableData = [
-            [{ text: "Rank", options: { bold: true } }, { text: "User ID", options: { bold: true } }, { text: "Username", options: { bold: true } }, { text: "Score", options: { bold: true } }],
-            ...sortedScores.map((user, index) => [index + 1, user.userId, user.username, user.score])
+            [
+                { text: "Rank", options: { bold: true, align: 'center' } }, 
+                { text: "Name", options: { bold: true } }, 
+                { text: "Score", options: { bold: true, align: 'center' } }
+            ],
+            ...leaderboardData.map((entry, index) => [
+                { text: index + 1, options: { align: 'center' } },
+                { text: entry.username },
+                { text: entry.totalScore, options: { align: 'center' } }
+            ])
         ];
 
-        slide.addTable(tableData, { x: 1, y: 2, w: 8, rowH: 0.5 });
+        // Added colW for better spacing and adjusted table position.
+        slide.addTable(tableData, { x: 1, y: 2, w: 8, rowH: 0.5, colW: [1, 5, 2] });
 
         pptx.writeFile({ fileName: "leaderboard.pptx" });
     };
+
+    if (loading) {
+        return <div className="text-center"><Spinner animation="border" /></div>;
+    }
+
+    if (error) {
+        return <Alert variant="danger">{error}</Alert>;
+    }
 
     return (
         <Card className="shadow-sm">
             <Card.Header as="h5" className="d-flex justify-content-between align-items-center">
                 Leaderboard
-                <Button variant="warning" size="sm" onClick={handleDownloadPPT} disabled={sortedScores.length === 0}>
+                <Button variant="warning" size="sm" onClick={handleDownloadPPT} disabled={leaderboardData.length === 0}>
                     <i className="bi bi-file-earmark-ppt-fill me-1"></i> Download PPT
                 </Button>
             </Card.Header>
             <Card.Body>
-                <Table striped bordered hover responsive>
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>User ID</th>
-                            <th>Username</th>
-                            <th>Score</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {sortedScores.map((user, index) => (
-                            <tr key={user.userId}><td>{index + 1}</td><td><code>{user.userId}</code></td><td>{user.username}</td><td>{user.score}</td></tr>
-                        ))}
-                    </tbody>
-                </Table>
+                {leaderboardData.length > 0 ? (
+                    <Table striped bordered hover responsive>
+                        <thead>
+                            <tr>
+                                <th className="text-center">Rank</th>
+                                <th>Name</th>
+                                <th className="text-center">Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {leaderboardData.map((entry, index) => ( <tr key={entry.username}><td className="text-center">{index + 1}</td><td>{entry.username}</td><td className="text-center">{entry.totalScore}</td></tr>))}
+                        </tbody>
+                    </Table>
+                ) : (
+                    <p className="text-center text-muted">No scores available for the leaderboard yet.</p>
+                )}
             </Card.Body>
         </Card>
     );

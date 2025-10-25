@@ -1,15 +1,60 @@
-import React, { useState, useCallback } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Navbar, Nav, Container, Button, Modal, Form } from 'react-bootstrap';
-import { ToastContainer } from 'react-toastify';
+import { getCurrentUser, logout } from '../../services/apiServices';
+import { toast } from 'react-toastify';
 
-const UserLayout = ({ currentUser, onLogout, theme, toggleTheme, children }) => {
+const UserLayout = ({ theme, toggleTheme }) => {
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const location = useLocation();
 
-    const handleLogout = useCallback(() => {
-        onLogout();
-    }, [onLogout]);
+    // CRITICAL FIX: UserLayout should be responsible for fetching its own user data
+    // and handling its own authentication state, making it a self-contained protected layout.
+    const [currentUser, setCurrentUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const user = await getCurrentUser();
+                if (user) {
+                    setCurrentUser(user);
+                } else {
+                    toast.error("Session expired. Please log in again.");
+                    navigate('/user/login');
+                }
+            } catch (error) {
+                console.error("Failed to fetch current user for UserLayout:", error);
+                toast.error("You must be logged in to access this page.");
+                navigate('/user/login');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchUser();
+    }, [navigate]);
+
+    const handleLogout = async () => {
+        try {
+            // CRITICAL FIX: Pass 'USER' role to ensure correct redirection and session invalidation.
+            await logout('USER');
+            setCurrentUser(null);
+            setShowLogoutModal(false);
+            toast.info("You have been logged out.");
+        } catch (error) {
+            console.error("Logout failed:", error);
+            toast.error("Logout failed. Please try again.");
+        }
+    };
+
+    if (loading || !currentUser) {
+        return (
+            <div className="d-flex justify-content-center align-items-center vh-100">
+                <div>Loading User Session...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="d-flex flex-column min-vh-100">
@@ -20,9 +65,9 @@ const UserLayout = ({ currentUser, onLogout, theme, toggleTheme, children }) => 
                     <Navbar.Collapse id="basic-navbar-nav">
                         <Nav className="me-auto" activeKey={location.pathname}>
                             <Nav.Link as={NavLink} to="/user/home" end>Home</Nav.Link>
-                            <Nav.Link as={NavLink} to="/user/dashboard">Dashboard & Notices</Nav.Link>
                             <Nav.Link as={NavLink} to="/user/quiz">Take Quiz</Nav.Link>
-                            <Nav.Link as={NavLink} to="/user/score">Performance</Nav.Link>
+                            <Nav.Link as={NavLink} to="/user/history">My History</Nav.Link>
+                            <Nav.Link as={NavLink} to="/user/performance">My Performance</Nav.Link>
                         </Nav>
                         <Nav className="ms-auto align-items-center">
                             <Form.Check
@@ -48,15 +93,13 @@ const UserLayout = ({ currentUser, onLogout, theme, toggleTheme, children }) => 
 
             <main className="flex-grow-1">
                 <Container className="py-4">
-                    {children || <Outlet />}
+                    <Outlet context={{ currentUser }} />
                 </Container>
             </main>
 
             <footer className="bg-body-tertiary text-center text-muted py-3 mt-auto border-top">
                 &copy; {new Date().getFullYear()} Quiz Platform. All Rights Reserved.
             </footer>
-
-            <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={false} />
 
             <Modal show={showLogoutModal} onHide={() => setShowLogoutModal(false)} centered>
                 <Modal.Header closeButton>

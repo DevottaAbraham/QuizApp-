@@ -1,122 +1,97 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import { Card, ListGroup, Button, Alert, Badge, Row, Col, Spinner, ButtonGroup, Nav } from 'react-bootstrap';
-import jsPDF from 'jspdf';
-import * as api from '../../services/apiServices';
-import 'jspdf-autotable';
-import { NotoSansTamil } from '../../assets/fonts/NotoSansTamil.js';
+import React, { useState, useEffect } from 'react';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
+import { Card, Spinner, Alert, ListGroup, Badge, Button } from 'react-bootstrap';
+import { getScoreDetail } from '../../services/apiServices';
 
-const ScoreDetail = ({ currentUser }) => {
-    const { scoreId: scoreIdParam } = useParams();
-    const scoreId = parseInt(scoreIdParam, 10);
-    const [scoreDetail, setScoreDetail] = useState(null);
+const ScoreDetail = () => {
+    const { scoreId } = useParams();
+    const [searchParams] = useSearchParams();
+    const filter = searchParams.get('filter'); // 'correct' or 'wrong'
+
+    const [scoreData, setScoreData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null); // New state for local error messages
-    const [lang, setLang] = useState('en'); // 'en' or 'ta'
-    const navigate = useNavigate();
-    const location = useLocation();
-
-    // Read the filter from the URL query parameter, defaulting to 'all'
-    const queryParams = new URLSearchParams(location.search);
-    const [filter, setFilter] = useState(queryParams.get('filter') || 'all');
-
-    // Handle invalid ID immediately
-    if (isNaN(scoreId)) {
-        return <Alert variant="danger">Invalid score ID. Please select a valid score from your history.</Alert>;
-    }
+    const [error, setError] = useState(null);
 
     useEffect(() => {
-        if (!currentUser) return;
-
-        const fetchScore = async () => {
-            setLoading(true);
+        const fetchDetails = async () => {
             try {
-                const data = await api.getScoreDetail(scoreId);
-                setScoreDetail(data);
-            } catch (error) {
-                console.error("Failed to fetch score detail:", error);
+                setLoading(true);
+                const data = await getScoreDetail(scoreId);
+                setScoreData(data);
+                setError(null);
+            } catch (err) {
                 setError('Failed to load score details. Please try again.');
+                console.error(err);
             } finally {
                 setLoading(false);
             }
         };
-        fetchScore();
-    }, [scoreId, currentUser]);
+
+        fetchDetails();
+    }, [scoreId]);
+
+    const handleDownload = (lang) => {
+        const downloadUrl = `${import.meta.env.VITE_API_URL}/scores/history/${scoreId}/download?lang=${lang}`;
+        window.open(downloadUrl, '_blank');
+    };
+
+    const filteredAnswers = scoreData?.answeredQuestions.filter(q => {
+        if (filter === 'correct') return q.isCorrect;
+        if (filter === 'wrong') return !q.isCorrect;
+        return true; // No filter, show all
+    });
+
+    if (loading) {
+        return <div className="text-center"><Spinner animation="border" /> Loading Score Details...</div>;
+    }
 
     if (error) {
         return <Alert variant="danger">{error}</Alert>;
     }
 
-    const handleDownloadPDF = () => {        
-        const downloadUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:8081/api'}/scores/history/${scoreId}/download?lang=${lang}`;
-        window.open(downloadUrl, '_blank');
-    };
-
-    if (loading) {
-        return (
-            <div className="text-center">
-                <Spinner animation="border" role="status" variant="primary" />
-                <p>Loading score details...</p>
-            </div>
-        );
+    if (!scoreData) {
+        return <Alert variant="info">No score data found.</Alert>;
     }
 
-    if (!currentUser) {
-        return <Alert variant="danger">You must be logged in to view score details.</Alert>;
-    }
-
-    if (!scoreDetail) {
-        return <Alert variant="warning">No score details found. <Link to="/user/history">Go back to score history.</Link></Alert>;
-    }
+    const correctCount = scoreData.answeredQuestions.filter(q => q.isCorrect).length;
+    const wrongCount = scoreData.answeredQuestions.length - correctCount;
 
     return (
-        <Card className="shadow-sm">
-            <Card.Header as="h4" className="d-flex flex-column flex-md-row justify-content-between align-items-center">
-                <div className="mb-2 mb-md-0">
-                    <ButtonGroup size="sm" className="me-3">
-                        <Button variant={lang === 'en' ? 'primary' : 'outline-primary'} onClick={() => setLang('en')}>EN</Button>
-                        <Button variant={lang === 'ta' ? 'primary' : 'outline-primary'} onClick={() => setLang('ta')}>TA</Button>
-                    </ButtonGroup>
-                    <span className="align-middle">Answer Breakdown</span>
-                </div>
-                <div className="d-flex">
-                    <Button variant="outline-secondary" size="sm" onClick={() => navigate(-1)} className="me-2 flex-grow-1">
-                        <i className="bi bi-arrow-left-circle-fill me-1"></i> Back
-                    </Button>
-                    <Button variant="success" size="sm" onClick={handleDownloadPDF}><i className="bi bi-file-earmark-pdf-fill me-1"></i> Download PDF</Button>
+        <Card>
+            <Card.Header>
+                <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+                    <div className="mb-3 mb-md-0">
+                        <h4>Quiz Result from {scoreData.quizDate}</h4>
+                        <p className="mb-0">Your Score: {scoreData.score} / {scoreData.totalQuestions}</p>
+                    </div>
+                    <div className="d-flex flex-wrap gap-2">
+                        {/* CRITICAL FIX: Links use the current path and only change the query parameter */}
+                        <Link to="?filter=correct" className="btn btn-success me-2">Correctly Answered ({correctCount})</Link>
+                        <Link to="?filter=wrong" className="btn btn-danger me-2">Wrongly Answered ({wrongCount})</Link>
+                        <Link to="?" className="btn btn-secondary">Show All</Link>
+                        <Button variant="primary" className="me-2" onClick={() => handleDownload('en')}>Download (English)</Button>
+                        <Button variant="info" onClick={() => handleDownload('ta')}>Download (Tamil)</Button>
+                    </div>
                 </div>
             </Card.Header>
             <Card.Body>
-                <Row className="mb-3 text-center">
-                    <Col><strong>Date:</strong> {new Date(scoreDetail.quizDate).toLocaleString()}</Col>
-                    <Col><strong>Final Score:</strong> <Badge bg="primary">{scoreDetail.score}</Badge> / <Badge bg="secondary">{scoreDetail.totalQuestions}</Badge></Col>
-                </Row>
-                <Nav variant="pills" activeKey={filter} onSelect={(k) => setFilter(k)} className="justify-content-center mb-3">
-                    <Nav.Item>
-                        <Nav.Link eventKey="all">All ({scoreDetail.answeredQuestions.length})</Nav.Link>
-                    </Nav.Item>
-                    <Nav.Item>
-                        <Nav.Link eventKey="correct" className="text-success">Correct ({scoreDetail.answeredQuestions.filter(a => a.isCorrect).length})</Nav.Link>
-                    </Nav.Item>
-                    <Nav.Item>
-                        <Nav.Link eventKey="incorrect" className="text-danger">Incorrect ({scoreDetail.answeredQuestions.filter(a => !a.isCorrect).length})</Nav.Link>
-                    </Nav.Item>
-                </Nav>
                 <ListGroup variant="flush">
-                    {scoreDetail.answeredQuestions
-                        .filter(answer => {
-                            if (filter === 'correct') return answer.isCorrect;
-                            if (filter === 'incorrect') return !answer.isCorrect;
-                            return true; // 'all'
-                        }).map((answer, index) => (
-                        <ListGroup.Item key={index} className={answer.isCorrect ? 'border-success' : 'border-danger'}>
-                            <strong>Q{index + 1}: {answer[`questionText_${lang}`] || answer.questionText_en}</strong>
-                            {answer.isCorrect ? (
-                                <p className="mb-0 text-success">Your answer: {lang === 'ta' ? answer.userAnswer_ta : answer.userAnswer} <i className="bi bi-check-circle-fill"></i></p>
+                    {filteredAnswers.map((item, index) => (
+                        <ListGroup.Item key={item.questionId} className={item.isCorrect ? 'border-success' : 'border-danger'}>
+                            <div className="fw-bold mb-2">{index + 1}. {item.questionText_en}</div>
+                            <div className="fw-bold mb-2">{item.questionText_ta}</div>
+                            {item.isCorrect ? (
+                                <p className="text-success">
+                                    Your Answer: {item.userAnswer} <Badge bg="success">Correct</Badge>
+                                </p>
                             ) : (
                                 <>
-                                    <p className="mb-0 text-danger">Your answer: {lang === 'ta' ? answer.userAnswer_ta : answer.userAnswer} <i className="bi bi-x-circle-fill"></i></p>
-                                    <p className="mb-0 text-success">Correct answer: {answer[`correctAnswer_${lang}`] || answer.correctAnswer_en} <i className="bi bi-check-circle-fill"></i></p>
+                                    <p className="text-danger">
+                                        Your Answer: {item.userAnswer} <Badge bg="danger">Wrong</Badge>
+                                    </p>
+                                    <p className="text-success">
+                                        Correct Answer: {item.correctAnswer}
+                                    </p>
                                 </>
                             )}
                         </ListGroup.Item>
