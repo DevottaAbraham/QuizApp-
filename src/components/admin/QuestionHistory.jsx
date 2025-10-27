@@ -1,50 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Card, ListGroup, Badge, Modal } from 'react-bootstrap';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { toast } from 'react-toastify';
-
-const getQuestions = () => JSON.parse(localStorage.getItem("quizQuestions")) || [];
-const saveQuestions = (questions) => {
-    localStorage.setItem("quizQuestions", JSON.stringify(questions));
-    window.dispatchEvent(new Event('storageUpdated')); // Notify other components
-};
+import * as api from '../../services/apiServices';
 
 const QuestionHistory = () => {
-    const [questions, setQuestions] = useState(getQuestions());
+    const [publishedQuestions, setPublishedQuestions] = useState([]);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-
-    const publishedQuestions = questions.filter(q => q.status === 'published');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     const formatDateTime = (dateString) => {
         if (!dateString) return 'N/A';
         return new Date(dateString).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
     };
 
+    const fetchHistory = async () => {
+        try {
+            setLoading(true);
+            const allQuestions = await api.getQuestions();
+            setPublishedQuestions(allQuestions.filter(q => q.status === 'published'));
+        } catch (err) {
+            setError('Failed to load question history.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchHistory();
+    }, []);
+
     const handleDownloadPDF = () => {
         const doc = new jsPDF();
         doc.text("Published Quiz Questions", 14, 16);
         doc.autoTable({
             startY: 20,
-            head: [['#', 'Question (English)', 'Correct Answer', 'Released', 'Disappears']],
-            body: publishedQuestions.map((q, i) => [
-                i + 1, 
-                q.text_en, 
-                q.correctAnswer_en,
-                formatDateTime(q.releaseDate),
-                formatDateTime(q.disappearDate),
-            ]),
+            head: [['#', 'Question (English)', 'Options', 'Released', 'Disappears']],
+            body: publishedQuestions.map((q, i) => {
+                const optionsText = q.options_en.map(opt => `${opt === q.correctAnswer_en ? '(*) ' : '    '}${opt}`).join('\n');
+                return [
+                    i + 1,
+                    q.text_en,
+                    optionsText,
+                    formatDateTime(q.releaseDate),
+                    formatDateTime(q.disappearDate)
+                ];
+            }),
         });
         doc.save('published-questions.pdf');
     };
 
-    const handleDeleteAllPublished = () => {
-        // Filter out all published questions, keeping only drafts
-        const remainingQuestions = questions.filter(q => q.status !== 'published');
-        setQuestions(remainingQuestions);
-        saveQuestions(remainingQuestions);
-        toast.error('All published questions have been deleted.');
-        setShowDeleteModal(false);
+    const handleDeleteAllPublished = async () => {
+        try {
+            await api.deleteAllPublishedQuestions();
+            setPublishedQuestions([]); // Clear from UI
+            toast.success('All published questions have been deleted.');
+        } catch (err) {
+            // Error is handled by apiService
+        } finally {
+            setShowDeleteModal(false);
+        }
     };
 
     return (

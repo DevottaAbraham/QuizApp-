@@ -18,7 +18,9 @@ const UserRegistration = () => {
         }
 
         try {
-            // The backend will automatically assign the 'USER' role.
+            // CRITICAL FIX: This was incorrectly calling the admin registration endpoint.
+            // It now correctly calls the general /auth/register endpoint, which will
+            // assign the 'USER' role by default since an admin already exists.
             const response = await apiFetch('/auth/register', {
                 method: 'POST',
                 body: JSON.stringify({ username, password }),

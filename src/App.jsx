@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
+import { AuthProvider } from './contexts/AuthContext'; // Import AuthProvider
 import 'react-toastify/dist/ReactToastify.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
@@ -14,6 +15,7 @@ import AdminLogin from './Pages/AdminPage/AdminLogin.jsx';
 // Import Layouts
 import AdminLayout from './components/admin/AdminLayout.jsx';
 import UserLayout from './components/user/UserLayout.jsx';
+import RootRedirect from './components/RootRedirect.jsx'; // Import the new component
 
 // Import Admin Pages
 import Dashboard from './components/admin/Dashboard.jsx';
@@ -59,7 +61,7 @@ function App() {
     document.body.style.backgroundColor = isAuthPage ? (theme === 'dark' ? '#212529' : '#f8f9fa') : '';
 
     return (
-        <>
+        <AuthProvider>
       <ToastContainer
         position="top-right"
         autoClose={5000}
@@ -74,13 +76,14 @@ function App() {
       <Routes>
         {/* Intelligent Root Path Redirect */}
         <Route
-          path="/"
-          element={<UserLogin />} /> {/* Default landing page */}
-                <Route path="/user/login" element={<UserLogin />} />
-                <Route path="/user/register" element={<UserRegistration />} />
-                <Route path="/admin/login" element={<AdminLogin />} />
-                <Route path="/admin/setup" element={<AdminSetup />} />
-                <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
+         
+           path="/"
+    element={<RootRedirect />} /> {/* Default landing page logic */}
+  
+  <Route path="/user/login" element={<UserLogin />} />
+  <Route path="/admin/login" element={<AdminLogin />} />
+  <Route path="/admin/setup" element={<AdminSetup />} />
+              
                 
 
 
@@ -110,7 +113,7 @@ function App() {
                 {/* Catch-all for 404 */}
                 <Route path="*" element={<div>404 Not Found</div>} />
             </Routes>            
-        </>
+        </AuthProvider>
     );
 };
 

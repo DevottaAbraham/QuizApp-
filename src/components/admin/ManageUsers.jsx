@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Card, Form, Row, Col, Spinner, Alert, Modal } from 'react-bootstrap';
+import { Table, Button, Card, Form, Row, Col, Spinner, Alert, Modal, InputGroup } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import * as api from '../../services/apiServices';
@@ -8,6 +8,9 @@ const ManageUsers = () => {
     const [users, setUsers] = useState([]);
     const [newUser, setNewUser] = useState({ username: '', password: '' });
     const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [confirmAction, setConfirmAction] = useState(null);
+    const [modalContent, setModalContent] = useState({ title: '', body: '' });
     const [newPasswordInfo, setNewPasswordInfo] = useState({ username: '', password: '' });
 
     const [loading, setLoading] = useState(true);
@@ -57,24 +60,28 @@ const ManageUsers = () => {
         }
     };
 
-    const handleDeleteUser = async (userId, username) => {
-        if (!window.confirm(`Are you sure you want to delete the user '${username}'?`)) {
-            return;
-        }
-
+    const performDelete = async (userId, username) => {
         try {
             await api.deleteUser(userId);
             setUsers(users.filter(u => u.id !== userId));
             toast.success(`User '${username}' was deleted.`);
         } catch (err) {
             console.error("Failed to delete user:", err);
+        } finally {
+            setShowConfirmModal(false);
         }
     };
 
-    const handleResetPassword = async (user) => {
-        if (!window.confirm(`Are you sure you want to reset the password for user "${user.username}"?`)) {
-            return;
-        }
+    const handleDeleteUser = (userId, username) => {
+        setModalContent({
+            title: 'Confirm Deletion',
+            body: `Are you sure you want to permanently delete the user '${username}'? This action cannot be undone.`
+        });
+        setConfirmAction(() => () => performDelete(userId, username));
+        setShowConfirmModal(true);
+    };
+
+    const performResetPassword = async (user) => {
         try {
             const result = await api.resetUserPassword(user.id);
             setNewPasswordInfo({ username: user.username, password: result.newPassword });
@@ -82,7 +89,18 @@ const ManageUsers = () => {
             toast.success(`Password for ${user.username} has been reset.`);
         } catch (err) {
             // Error toast is handled by apiService
+        } finally {
+            setShowConfirmModal(false);
         }
+    };
+
+    const handleResetPassword = (user) => {
+        setModalContent({
+            title: 'Confirm Password Reset',
+            body: `Are you sure you want to reset the password for user '${user.username}'?`
+        });
+        setConfirmAction(() => () => performResetPassword(user));
+        setShowConfirmModal(true);
     };
 
     return (
@@ -115,7 +133,7 @@ const ManageUsers = () => {
                                                 <td>{user.id}</td><td>{user.username}</td>
                                                 <td>
                                                     <Link to={`/admin/users/${user.id}/performance`} className="btn btn-outline-info btn-sm me-2">View Performance</Link>
-                                                    <Button variant="outline-warning" size="sm" className="me-2" onClick={() => handleResetPassword(user)}>Reset Password</Button>
+                                                    <Button variant="outline-warning" size="sm" className="me-2" onClick={() => handleResetPassword(user)}>Reset</Button>
                                                     <Button variant="outline-danger" size="sm" onClick={() => handleDeleteUser(user.id, user.username)}>Remove</Button>
                                                 </td>
                                             </tr>
@@ -131,10 +149,27 @@ const ManageUsers = () => {
                 <Modal.Header closeButton><Modal.Title>Password Reset Successful</Modal.Title></Modal.Header>
                 <Modal.Body>
                     <p>The password for user <strong>{newPasswordInfo.username}</strong> has been changed.</p>
-                    <p>Please copy the new password and provide it to the user:</p>
-                    <Alert variant="info" className="text-center"><strong className="fs-5 font-monospace">{newPasswordInfo.password}</strong></Alert>
+                    <p>Please provide the new temporary password to the user:</p>
+                    <InputGroup>
+                        <Form.Control
+                            value={newPasswordInfo.password}
+                            readOnly
+                            className="font-monospace fs-5 text-center"
+                        />
+                        <Button variant="outline-secondary" onClick={() => {
+                            navigator.clipboard.writeText(newPasswordInfo.password);
+                            toast.info("Password copied to clipboard!");
+                        }}>
+                            <i className="bi bi-clipboard-check-fill"></i> Copy
+                        </Button>
+                    </InputGroup>
                 </Modal.Body>
                 <Modal.Footer><Button variant="primary" onClick={() => setShowPasswordModal(false)}>Close</Button></Modal.Footer>
+            </Modal>
+            <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered>
+                <Modal.Header closeButton><Modal.Title>{modalContent.title}</Modal.Title></Modal.Header>
+                <Modal.Body>{modalContent.body}</Modal.Body>
+                <Modal.Footer><Button variant="secondary" onClick={() => setShowConfirmModal(false)}>Cancel</Button><Button variant="danger" onClick={confirmAction}>Confirm</Button></Modal.Footer>
             </Modal>
         </>
     );

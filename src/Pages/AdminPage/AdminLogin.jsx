@@ -3,11 +3,13 @@ import { Card, Form, Button, InputGroup, Alert } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import { Link, useNavigate } from 'react-router-dom';
 import * as api from '../../services/apiServices';
+import { useAuth } from '../../contexts/AuthContext'; // Import useAuth
 
-const AdminLogin = ({ isSetupComplete }) => {
+const AdminLogin = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const navigate = useNavigate();
+    const { setCurrentUser } = useAuth(); // Get the state setter from context
 
     const [loading, setLoading] = useState(false);
 
@@ -15,9 +17,12 @@ const AdminLogin = ({ isSetupComplete }) => {
         e.preventDefault();
         setLoading(true);
         try {
-            const user = await api.login(username, password, 'ADMIN');
+            const user = await api.login(username, password);
+            // CRITICAL FIX: The role from the backend is 'ADMIN' (uppercase).
+            // The check was failing because it was looking for 'admin' (lowercase).
             if (user && user.role === 'ADMIN') {
                 toast.success("Admin login successful!");
+                setCurrentUser(user); // CRITICAL: Update the global state
                 navigate('/admin/dashboard');
             }
         } catch (error) {
@@ -34,11 +39,6 @@ const AdminLogin = ({ isSetupComplete }) => {
                     <h3>Admin Login</h3>
                 </Card.Header>
                 <Card.Body className="p-4">
-                    {!isSetupComplete && (
-                        <Alert variant="warning" className="text-center small">
-                            Application not set up. <Link to="/admin/setup">Create the first admin account.</Link>
-                        </Alert>
-                    )}
                     <Form onSubmit={handleSubmit}>
                         <Form.Group className="mb-3" controlId="username">
                             <Form.Label>Username</Form.Label>
@@ -70,6 +70,9 @@ const AdminLogin = ({ isSetupComplete }) => {
                             {loading ? 'Logging In...' : 'Login'}
                         </Button>
                     </Form>
+                    <div className="text-center mt-3">
+                        <Link to="/admin/setup">First-time Setup? Create Admin Account</Link>
+                    </div>
                 </Card.Body>
             </Card>
         </div>

@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Col, Row, InputGroup, Button, Form, Spinner, Alert } from 'react-bootstrap';
-import { Link, useOutletContext } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getDashboardStats } from '../../services/apiServices';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Dashboard = () => {
-    const { currentAdmin } = useOutletContext(); // Get the admin user from the layout context
+    const { currentUser } = useAuth();
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        // Only fetch if the admin user object is available
-        if (currentAdmin) {
+        if (currentUser) {
             const fetchStats = async () => {
                 try {
                     setLoading(true);
@@ -26,11 +26,8 @@ const Dashboard = () => {
                 }
             };
             fetchStats();
-        } else {
-            // If currentAdmin is not available, don't attempt to load.
-            setLoading(false);
         }
-    }, [currentAdmin]); // Re-run the effect if the currentAdmin object changes.
+    }, [currentUser]);
 
     const userQuizLink = `${window.location.origin}/user/login`;
 

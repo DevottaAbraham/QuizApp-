@@ -1,57 +1,41 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Navbar, Nav, Container, Button, Modal, Form } from 'react-bootstrap';
-import { getCurrentUser, logout } from '../../services/apiServices';
+import { Navbar, Nav, Container, Button, Modal, Form, Spinner } from 'react-bootstrap';
+import { useAuth } from '../../contexts/AuthContext';
+import { logout } from '../../services/apiServices';
 import { toast } from 'react-toastify';
 
 const UserLayout = ({ theme, toggleTheme }) => {
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const location = useLocation();
-
-    // CRITICAL FIX: UserLayout should be responsible for fetching its own user data
-    // and handling its own authentication state, making it a self-contained protected layout.
-    const [currentUser, setCurrentUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const { currentUser, setCurrentUser, loading } = useAuth();
     const navigate = useNavigate();
 
     useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                const user = await getCurrentUser();
-                if (user) {
-                    setCurrentUser(user);
-                } else {
-                    toast.error("Session expired. Please log in again.");
-                    navigate('/user/login');
-                }
-            } catch (error) {
-                console.error("Failed to fetch current user for UserLayout:", error);
+        if (!loading) {
+            if (!currentUser || currentUser.role !== 'USER') {
                 toast.error("You must be logged in to access this page.");
                 navigate('/user/login');
-            } finally {
-                setLoading(false);
             }
-        };
-        fetchUser();
-    }, [navigate]);
+        }
+    }, [currentUser, loading, navigate]);
 
     const handleLogout = async () => {
         try {
-            // CRITICAL FIX: Pass 'USER' role to ensure correct redirection and session invalidation.
             await logout('USER');
             setCurrentUser(null);
             setShowLogoutModal(false);
             toast.info("You have been logged out.");
         } catch (error) {
-            console.error("Logout failed:", error);
             toast.error("Logout failed. Please try again.");
         }
     };
 
-    if (loading || !currentUser) {
+    // While the session is being verified, show a loading spinner.
+    if (loading) {
         return (
             <div className="d-flex justify-content-center align-items-center vh-100">
-                <div>Loading User Session...</div>
+                <Spinner animation="border" />
             </div>
         );
     }
@@ -60,7 +44,7 @@ const UserLayout = ({ theme, toggleTheme }) => {
         <div className="d-flex flex-column min-vh-100">
             <Navbar bg={theme === 'dark' ? 'dark' : 'primary'} variant="dark" expand="lg" className="shadow-sm" collapseOnSelect>
                 <Container>
-                    <Navbar.Brand as={Link} to="/user/home">Quiz Platform</Navbar.Brand>
+                    <Navbar.Brand as={Link} to="/user/home">Quiz Bees</Navbar.Brand>
                     <Navbar.Toggle aria-controls="basic-navbar-nav" />
                     <Navbar.Collapse id="basic-navbar-nav">
                         <Nav className="me-auto" activeKey={location.pathname}>

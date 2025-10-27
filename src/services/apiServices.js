@@ -34,22 +34,22 @@ let refreshPromise = null;
  * @throws {Error} Throws an error if the network response is not ok.
  */
 // d:\Quize Website Design\QuizApp\QuizApp\src\services\apiServices.js
-/**
- * A generic fetch wrapper to handle API requests, headers, and error handling.
- * This version includes automatic JWT refresh logic.
- */
 export const apiFetch = async (endpoint, options = {}) => {
     const url = `${API_BASE_URL}${endpoint}`;
 
+    // CRITICAL: Ensure all API requests include credentials (cookies).
+    const fetchOptions = {
+        ...options,
+        credentials: 'include',
+        headers: { ...options.headers },
+    };
+
     try {
-        const headers = { ...options.headers };
         if (options.body instanceof FormData) {
             // Let the browser set the Content-Type for FormData
         } else {
-            if (options.body) headers['Content-Type'] = 'application/json';
+            if (options.body) fetchOptions.headers['Content-Type'] = 'application/json';
         }
-
-        const fetchOptions = { ...options, headers, credentials: 'include' };
 
         let response = await fetch(url, fetchOptions);
 
@@ -57,11 +57,8 @@ export const apiFetch = async (endpoint, options = {}) => {
         if (response.status === 401 && !options.isPublic) {
             if (!isRefreshing) {
                 isRefreshing = true;
-                // Start the refresh process. All subsequent failed requests will wait on this promise.
-                refreshPromise = fetch(`${API_BASE_URL}/auth/refresh`, {
-                        method: 'POST',
-                        credentials: 'include'
-                    })
+                // CRITICAL FIX: The refresh call itself is a public endpoint and should not trigger another refresh.
+                refreshPromise = apiFetch('/auth/refresh', { method: 'POST', isPublic: true })
                     .then(refreshResponse => {
                         if (!refreshResponse.ok) {
                             // If refresh fails, the session is truly over.
@@ -98,7 +95,12 @@ export const apiFetch = async (endpoint, options = {}) => {
         if (!response.ok) {
             const data = await response.json().catch(() => ({}));
             const errorMessage = data.message || `HTTP error! Status: ${response.status}`;
-            toast.error(errorMessage);
+            
+            // CRITICAL FIX: Do not show an error toast for the initial, expected 401 on /api/auth/me.
+            // This is a normal part of the authentication flow, not a user-facing error.
+            if (!(response.status === 401 && endpoint === '/auth/me')) {
+                toast.error(errorMessage);
+            }
             throw new Error(errorMessage);
         }
 
@@ -121,14 +123,9 @@ export const apiFetch = async (endpoint, options = {}) => {
  * This should be called when the application initializes to restore the session.
  */
 export const getCurrentUser = async () => {
-    try {
-        // CRITICAL FIX: The /auth/me endpoint is protected for ADMINS only in Spring Security.
-        // The /user/me endpoint is accessible by any authenticated user.
-        // We must check the current path to decide which endpoint to call.
-        if (window.location.pathname.startsWith('/admin')) {
-            return await apiFetch('/auth/me'); // For admins
-        }
-        return await apiFetch('/user/me'); // CRITICAL: This was pointing to /auth/me, causing user pages to load admin data.
+    try { // The /api/auth/me endpoint is now accessible to any authenticated user.
+        // This single function can now be used reliably across the entire application.
+        return await apiFetch('/auth/me');
     } catch (error) {
         // If the request fails (e.g., 401), it means no valid session exists.
         return null;
@@ -160,8 +157,7 @@ export const login = async (username, password) => {
         body: JSON.stringify({ username, password }),
         isPublic: true, // This is a public route
     });
-    // After a successful login, the backend sets httpOnly cookies.
-    // We just need to store the user's info (without tokens) in localStorage.
+    // The AuthContext will handle setting the user state and localStorage
     if (userData) {
         setAuthToken(userData);
     }
@@ -169,27 +165,21 @@ export const login = async (username, password) => {
 };
 
 export const register = async (username, password) => {
+    // After registration, the backend automatically logs the user in and sets cookies.
+    // The AuthContext will handle setting the user state and localStorage.
     const userData = await apiFetch('/auth/register', {
         method: 'POST',
         body: JSON.stringify({ username, password }),
         isPublic: true, // This is a public route
     });
-    // After registration, the backend automatically logs the user in and sets cookies.
-    // We store the returned user info in localStorage.
     if (userData) {
-        setAuthToken(userData); // Automatically log in the new user
+        setAuthToken(userData);
     }
     return userData;
 };
 
-export const logout = async (role = 'ADMIN') => {
+export const logout = async () => {
     clearAuthToken(); // Immediately clear frontend state for responsiveness
-    // Redirect to the appropriate login page based on the user's role.
-    if (role === 'USER') {
-        history.push('/user/login');
-    } else {
-        history.push('/admin/login');
-    }
     return await apiFetch('/auth/logout', { method: 'POST' }); // Send logout request to backend
 };
 

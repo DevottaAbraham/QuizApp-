@@ -144,7 +144,7 @@ const Quiz = () => {
             toast.success(`Quiz submitted successfully! Redirecting to your results...`);
             
             // Redirect the user to the detailed score page for the quiz they just took.
-            navigate(`/user/score/${result.quizId}`);
+            navigate(`/user/history`);
 
         } catch (err) {
             console.error("Failed to submit quiz:", err);
