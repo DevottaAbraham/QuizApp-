@@ -40,7 +40,10 @@ export const apiFetch = async (endpoint, options = {}) => {
     // CRITICAL: Ensure all API requests include credentials (cookies).
     const fetchOptions = {
         ...options,
-        credentials: 'include',
+        // CRITICAL FIX: Change credentials to 'same-origin' to avoid CORS issues
+        // during development and deployment when frontend and backend are on different domains.
+        // The browser will still automatically handle sending cookies for authenticated requests.
+        credentials: 'same-origin',
         headers: { ...options.headers },
     };
 
