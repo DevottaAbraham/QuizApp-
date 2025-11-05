@@ -3,6 +3,7 @@ import { Card, Nav, Form, Button, InputGroup, FormControl } from 'react-bootstra
 import { toast } from 'react-toastify';
 import * as api from '../../services/apiServices';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 const UserLogin = () => {
     const [activeTab, setActiveTab] = useState('signup');
@@ -11,6 +12,7 @@ const UserLogin = () => {
     const [signupUsername, setSignupUsername] = useState('');
     const [signupPassword, setSignupPassword] = useState('');
     const navigate = useNavigate();
+    const { setCurrentUser } = useAuth();
 
     const generateUserPassword = () => {
         const password = Math.random().toString(36).slice(-8);
@@ -27,6 +29,7 @@ const UserLogin = () => {
             const user = await api.login(loginUsername, loginPassword);
             if (user && user.role === 'USER') {
                 toast.success(`Welcome back, ${user.username}!`);
+                setCurrentUser(user); // Update the global authentication state
                 navigate('/user/home');
             }
         } catch (error) {
@@ -44,6 +47,7 @@ const UserLogin = () => {
             const newUser = await api.register(signupUsername, signupPassword);
             if (newUser && newUser.role === 'USER') { // The presence of newUser indicates a successful registration and auto-login
                 toast.success(`User '${signupUsername}' created successfully! Welcome!`);
+                setCurrentUser(newUser); // Update the global authentication state
                 navigate('/user/home');
             }
         } catch (error) {

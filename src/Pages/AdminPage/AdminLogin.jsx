@@ -22,7 +22,7 @@ const AdminLogin = () => {
             // The check was failing because it was looking for 'admin' (lowercase).
             if (user && user.role === 'ADMIN') {
                 toast.success("Admin login successful!");
-                setCurrentUser(user); // CRITICAL: Update the global state
+                setCurrentUser(user); // Update the global authentication state
                 navigate('/admin/dashboard');
             }
         } catch (error) {

@@ -1,31 +1,27 @@
 import React, { useState } from 'react';
 import { Form, Button, Card, Alert, Container, Row, Col } from 'react-bootstrap';
 import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 import * as api from '../../services/apiServices';
+import { useAuth } from '../../contexts/AuthContext';
 
-const AdminSetup = ({ onLogin, onSetupComplete }) => {
+const AdminSetup = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const navigate = useNavigate();
+    const { setCurrentUser } = useAuth();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
-
         try {
-            // FIX: Call the dedicated registerAdmin endpoint to guarantee an ADMIN role is created.
-            // The backend will reject this if an admin already exists.
             const response = await api.registerAdmin(username, password);
             toast.success("Admin account created successfully! Logging you in...");
-            
-            // CRITICAL FIX:
-            // 1. Notify the App component that setup is now complete.
-            onSetupComplete();
-            // 2. Log the new admin in.
-            onLogin(response);
-
+            setCurrentUser(response); // Update the global authentication state
+            navigate('/admin/dashboard'); // Redirect to the dashboard
         } catch (err) {
             setError(err.message || "An unknown error occurred during setup.");
         } finally {
