@@ -9,12 +9,6 @@ export const history = createBrowserHistory();
 // In a real application, this would come from an environment variable
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://quizapp-backend-nxm7.onrender.com';
 
-fetch(`${API_BASE_URL}/auth/login`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ username, password }),
-});
-
 /**
  * Stores the current user's information (without tokens) in localStorage.
  */
