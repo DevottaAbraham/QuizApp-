@@ -8,8 +8,8 @@ export const history = createBrowserHistory();
 
 // In a real application, this would come from an environment variable
 // Use Vite's way of accessing environment variables
-// Correct frontend API configuration
-const API_BASE_URL = 'https://quizapp-backend-nxm7.onrender.com/api';
+// Correct frontend API configuration using Vite's environment variables.
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://quizapp-backend-nxm7.onrender.com/api';
 
 
 
