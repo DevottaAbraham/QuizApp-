@@ -6,8 +6,8 @@ import { createBrowserHistory } from 'history';
 // Create a history object to allow navigation from outside React components
 export const history = createBrowserHistory();
 
-// In a real application, this would come from an environment variable
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://quizapp-backend-nxm7.onrender.com';
+// Use Vite's standard way of accessing environment variables.
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://quizapp-backend-nxm7.onrender.com/api';
 
 /**
  * Stores the current user's information (without tokens) in localStorage.
