@@ -16,7 +16,7 @@ import AdminLogin from './Pages/AdminPage/AdminLogin.jsx';
 import AdminLayout from './components/admin/AdminLayout.jsx';
 import UserLayout from './components/user/UserLayout.jsx';
 import RootRedirect from './components/RootRedirect.jsx'; // Import the new component
-
+import ForcePasswordChange from './Pages/UserPage/ForcePasswordChange.jsx';
 import Setup from './Pages/AdminPage/Setup.jsx';
 import UserRegistration from './Pages/UserPage/UserRegistration.jsx';
 
