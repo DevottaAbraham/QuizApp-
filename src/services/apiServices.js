@@ -7,12 +7,11 @@ import { createBrowserHistory } from 'history';
 export const history = createBrowserHistory();
 
 // In a real application, this would come from an environment variable
-// Use Vite's way of accessing environment variables
-// Correct frontend API configuration using Vite's environment variables.
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://quizapp-backend-nxm7.onrender.com/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://quizapp-backend-nxm7.onrender.com';
 
-
-
+/**
+ * Stores the current user's information (without tokens) in localStorage.
+ */
 export const setAuthToken = (user) => {
     if (user) {
         localStorage.setItem('currentUser', JSON.stringify(user)); // Use the correct key
@@ -41,7 +40,7 @@ export const apiFetch = async (endpoint, options = {}) => {
     // CRITICAL: Ensure all API requests include credentials (cookies).
     const fetchOptions = {
         ...options,
-        credentials: 'include', // This is required for the browser to send cookies on cross-origin requests.
+        credentials: 'include',
         headers: { ...options.headers },
     };
 
