@@ -16,6 +16,10 @@ import AdminLogin from './Pages/AdminPage/AdminLogin.jsx';
 import AdminLayout from './components/admin/AdminLayout.jsx';
 import UserLayout from './components/user/UserLayout.jsx';
 import RootRedirect from './components/RootRedirect.jsx'; // Import the new component
+import ForcePasswordChange from './Pages/UserPage/ForcePasswordChange.jsx';
+import Setup from './Pages/Setup.jsx';
+import UserRegistration from './Pages/UserPage/UserRegistration.jsx';
+
 
 // Import Admin Pages
 import Dashboard from './components/admin/Dashboard.jsx';
@@ -36,8 +40,6 @@ import QuizPage from './Pages/UserPage/Quiz.jsx';
 import PerformanceHistory from './Pages/UserPage/PerformanceHistory.jsx';
 import ScoreDetail from './Pages/UserPage/ScoreDetail.jsx'; 
 import MyScore from './components/user/MyScore.jsx';
-import UserRegistration from './Pages/UserPage/UserRegistration.jsx';
-
 
 // Error Pages
 import NotFound from './Pages/Error/NotFound.jsx';
@@ -80,10 +82,11 @@ function App() {
            path="/"
     element={<RootRedirect />} /> {/* Default landing page logic */}
   
-  <Route path="/user/login" element={<UserLogin />} />
   <Route path="/admin/login" element={<AdminLogin />} />
-  <Route path="/admin/setup" element={<AdminSetup />} />
-              
+  <Route path="/user/login" element={<UserLogin />} />
+  <Route path="/user/register" element={<UserRegistration />} />
+  <Route path="/setup" element={<Setup />} />
+  <Route path="/force-change-password" element={<ForcePasswordChange />} />
                 
 
 

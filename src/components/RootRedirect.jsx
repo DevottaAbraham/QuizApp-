@@ -31,7 +31,7 @@ function RootRedirect() {
         return (
             <div className="d-flex flex-column justify-content-center align-items-center vh-100">
                 <h3 className="text-danger">Failed to check application status.</h3>
-                <p>Please ensure the backend server is running. If this is the first time running the app, <Link to="/admin/setup">proceed to setup</Link>.</p>
+                <p>Please ensure the backend server is running. If this is the first time running the app, <Link to="/setup">proceed to setup</Link>.</p>
             </div>
         );
     }

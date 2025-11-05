@@ -71,7 +71,7 @@ const AdminLogin = () => {
                         </Button>
                     </Form>
                     <div className="text-center mt-3">
-                        <Link to="/admin/setup">First-time Setup? Create Admin Account</Link>
+                        <Link to="/setup">First-time Setup? Create Admin Account</Link>
                     </div>
                 </Card.Body>
             </Card>
