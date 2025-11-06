@@ -17,7 +17,6 @@ import AdminLayout from './components/admin/AdminLayout.jsx';
 import UserLayout from './components/user/UserLayout.jsx';
 import RootRedirect from './components/RootRedirect.jsx'; // Import the new component
 import ForcePasswordChange from './Pages/UserPage/ForcePasswordChange.jsx';
-
 import UserRegistration from './Pages/UserPage/UserRegistration.jsx';
 
 
@@ -76,19 +75,13 @@ function App() {
         pauseOnHover
       />
       <Routes>
-        {/* Intelligent Root Path Redirect */}
-        <Route
-         
-           path="/"
-    element={<RootRedirect />} /> {/* Default landing page logic */}
-  
-  <Route path="/admin/login" element={<AdminLogin />} />
-  <Route path="/user/login" element={<UserLogin />} />
-  <Route path="/user/register" element={<UserRegistration />} />
-  <Route path="/Adminsetup" element={<AdminSetup />} />
-  <Route path="/force-change-password" element={<ForcePasswordChange />} />
-                
-
+        {/* Public Authentication and Setup Routes */}
+        <Route path="/" element={<RootRedirect />} />
+        <Route path="/admin/setup" element={<AdminSetup />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/user/login" element={<UserLogin />} />
+        <Route path="/user/register" element={<UserRegistration />} />
+        <Route path="/force-change-password" element={<ForcePasswordChange />} />
 
                 {/* User Routes (Protected by UserLayout) */}
                 <Route path="/user" element={<UserLayout theme={theme} toggleTheme={toggleTheme} />}>
@@ -114,7 +107,7 @@ function App() {
                 </Route>
 
                 {/* Catch-all for 404 */}
-                <Route path="*" element={<div>404 Not Found</div>} />
+                <Route path="*" element={<NotFound />} />
             </Routes>            
         </AuthProvider>
     );

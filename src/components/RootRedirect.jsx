@@ -10,20 +10,31 @@ function RootRedirect() {
     const [error, setError] = useState(false);
 
     useEffect(() => {
-        // Do not check setup status until the auth context has finished loading.
-        if (authLoading) return;
+    const checkSetupStatus = async () => {
+        try {
+            const data = await apiFetch('/auth/setup-status');
+            setIsSetupComplete(data.isSetupComplete);
+        } catch (error) {
+            console.error('Failed to check setup status:', error);
+            setIsSetupComplete(false); // Assume not complete on error
+        } finally {
+            setAuthLoading(false);
+        }
+    };
 
-        const checkStatus = async () => {
-            try {
-                const data = await checkSetupStatus();
-                setIsSetupComplete(data.isSetupComplete);
-            } catch (err) {
-                console.error("Failed to check setup status:", err);
-                setError(true);
-            }
-        };
-        checkStatus();
-    }, [authLoading]); // Re-run when auth loading state changes.
+    checkSetupStatus();
+}, []);
+
+if (authLoading || isSetupComplete === null) {
+    return <div className="d-flex justify-content-center align-items-center vh-100"><Spinner animation="border" /></div>;
+}
+
+if (!isSetupComplete) {
+    return <Navigate to="/admin/setup" replace />;
+}
+
+return <Navigate to="/user/login" replace />;
+// Re-run when auth loading state changes.
 
     if (error) {
         return (

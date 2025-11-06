@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { setAuthToken, clearAuthToken, getCurrentUser } from '../services/apiServices';
+import { setAuthToken, clearAuthToken, getCurrentUser as apiGetCurrentUser } from '../services/apiServices'; // Renamed to avoid conflict
 
 const AuthContext = createContext(null);
 
@@ -17,9 +17,10 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const initializeAuth = async () => {
+            setLoading(true); // Ensure loading is true at the start of initialization
             try {
                 // Check for a valid session on the backend
-                const user = await getCurrentUser();
+                const user = await apiGetCurrentUser(); // Call the imported getCurrentUser
                 if (user) {
                     setAuthToken(user);
                     setCurrentUser(user);
