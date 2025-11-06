@@ -1,8 +1,7 @@
 
-
 import { toast } from 'react-toastify';
 import { createBrowserHistory } from 'history';
-
+ 
 // Create a history object to allow navigation from outside React components
 export const history = createBrowserHistory();
 
