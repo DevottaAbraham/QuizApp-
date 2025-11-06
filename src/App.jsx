@@ -17,7 +17,7 @@ import AdminLayout from './components/admin/AdminLayout.jsx';
 import UserLayout from './components/user/UserLayout.jsx';
 import RootRedirect from './components/RootRedirect.jsx'; // Import the new component
 import ForcePasswordChange from './Pages/UserPage/ForcePasswordChange.jsx';
-import Setup from './Pages/AdminPage/Setup.jsx';
+
 import UserRegistration from './Pages/UserPage/UserRegistration.jsx';
 
 
@@ -85,7 +85,7 @@ function App() {
   <Route path="/admin/login" element={<AdminLogin />} />
   <Route path="/user/login" element={<UserLogin />} />
   <Route path="/user/register" element={<UserRegistration />} />
-  <Route path="/setup" element={<Setup />} />
+  <Route path="/Adminsetup" element={<AdminSetup />} />
   <Route path="/force-change-password" element={<ForcePasswordChange />} />
                 
 
