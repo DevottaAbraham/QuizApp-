@@ -1,17 +1,10 @@
-const defaultContent = {
-    title: 'Welcome to the Bible Quiz!',
-    lead: 'Test your knowledge and grow in faith.'
 
-
-};
+import { apiFetch } from './apiServices';
 
 /**
- * Fetches the content for the user home page.
- * Currently simulates an API call by fetching from localStorage.
+ * Fetches the content for the home page from the API.
  * @returns {Promise<Object>} A promise that resolves with the home page content.
  */
 export const getHomePageContent = async () => {
-    // In a real app, this would be a fetch() call to your backend API.
-    // For now, we'll return the default content.
-    return defaultContent;
+    return apiFetch('/content/home');
 };
