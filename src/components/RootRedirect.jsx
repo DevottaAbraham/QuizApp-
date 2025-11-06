@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { Spinner } from 'react-bootstrap';
-import { checkSetupStatus } from '../services/apiServices';
+import { checkSetupStatus } from '../services/apiServices'; // Correctly imported
 import { useAuth } from '../contexts/AuthContext';
 
 function RootRedirect() {
@@ -10,31 +10,20 @@ function RootRedirect() {
     const [error, setError] = useState(false);
 
     useEffect(() => {
-    const checkSetupStatus = async () => {
-        try {
-            const data = await apiFetch('/auth/setup-status');
-            setIsSetupComplete(data.isSetupComplete);
-        } catch (error) {
-            console.error('Failed to check setup status:', error);
-            setIsSetupComplete(false); // Assume not complete on error
-        } finally {
-            setAuthLoading(false);
-        }
-    };
-
-    checkSetupStatus();
-}, []);
-
-if (authLoading || isSetupComplete === null) {
-    return <div className="d-flex justify-content-center align-items-center vh-100"><Spinner animation="border" /></div>;
-}
-
-if (!isSetupComplete) {
-    return <Navigate to="/admin/setup" replace />;
-}
-
-return <Navigate to="/user/login" replace />;
-// Re-run when auth loading state changes.
+        // This function will now use the correctly imported `checkSetupStatus`
+        const performCheck = async () => {
+            try {
+                const data = await checkSetupStatus(); // Use the imported function
+                setIsSetupComplete(data.isSetupComplete);
+            } catch (err) {
+                console.error('Failed to check application status:', err);
+                setError(true);
+                // We can also assume setup is not complete if the check fails
+                setIsSetupComplete(false);
+            }
+        };
+        performCheck();
+    }, []); // Run only once on component mount
 
     if (error) {
         return (
