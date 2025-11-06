@@ -6,7 +6,7 @@ import { createBrowserHistory } from 'history';
 export const history = createBrowserHistory();
 
 // Use Vite's standard way of accessing environment variables.
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://quizapp-backend-nxm7.onrender.com' // Already correct
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://quizapp-backend-nxm7.onrender.com';
 /**
  * Stores the current user's information (without tokens) in localStorage.
  */
