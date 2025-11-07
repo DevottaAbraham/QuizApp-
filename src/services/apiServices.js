@@ -122,7 +122,7 @@ export const apiFetch = async (endpoint, options = {}) => {
 export const getCurrentUser = async () => {
     try { // The /api/auth/me endpoint is now accessible to any authenticated user.
         // This single function can now be used reliably across the entire application.
-        return await apiFetch('/auth/me');
+        return await apiFetch('/api/auth/me');
     } catch (error) {
         // If the request fails (e.g., 401), it means no valid session exists.
         return null;
@@ -132,13 +132,13 @@ export const getCurrentUser = async () => {
 // ... (other functions)
 
 // --- Admin Question Management Service ---
-export const getQuestions = () => apiFetch('/admin/questions');
-export const getQuestionById = (questionId) => apiFetch(`/admin/questions/${questionId}`);
+export const getQuestions = () => apiFetch('/api/admin/questions');
+export const getQuestionById = (questionId) => apiFetch(`/api/admin/questions/${questionId}`);
 
 // ...
 
 // ✅ This function correctly uses apiFetch to create a question.
-export const createQuestion = (questionData) => apiFetch('/admin/questions', {
+export const createQuestion = (questionData) => apiFetch('/api/admin/questions', {
     method: 'POST',
     body: JSON.stringify(questionData),
 });
@@ -149,7 +149,7 @@ export const createQuestion = (questionData) => apiFetch('/admin/questions', {
 
 // Authentication Service
 export const login = async (username, password) => {
-    const userData = await apiFetch('/auth/login', {
+    const userData = await apiFetch('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ username, password }),
         isPublic: true, // This is a public route
@@ -164,7 +164,7 @@ export const login = async (username, password) => {
 export const register = async (username, password) => {
     // After registration, the backend automatically logs the user in and sets cookies.
     // The AuthContext will handle setting the user state and localStorage.
-    const userData = await apiFetch('/auth/register', {
+    const userData = await apiFetch('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify({ username, password }),
         isPublic: true, // This is a public route
@@ -177,12 +177,12 @@ export const register = async (username, password) => {
 
 export const logout = async () => {
     clearAuthToken(); // Immediately clear frontend state for responsiveness
-    return await apiFetch('/auth/logout', { method: 'POST' }); // Send logout request to backend
+    return await apiFetch('/api/auth/logout', { method: 'POST' }); // Send logout request to backend
 };
 
 export const registerAdmin = async (username, password) => {
     // This endpoint is specifically for the initial admin setup.
-    return await apiFetch('/auth/setup', {
+    return await apiFetch('/api/auth/setup', {
         method: 'POST',
         body: JSON.stringify({ username, password }),
         isPublic: true, // The endpoint is public, but protected by backend logic.
@@ -190,7 +190,7 @@ export const registerAdmin = async (username, password) => {
 };
 
 export const forgotPasswordGenerateTemp = async (username) => {
-    return await apiFetch('/auth/forgot-password-generate-temp', {
+    return await apiFetch('/api/auth/forgot-password-generate-temp', {
         method: 'POST',
         body: JSON.stringify({ username }),
         isPublic: true,
@@ -198,7 +198,7 @@ export const forgotPasswordGenerateTemp = async (username) => {
 };
 
 export const adminForgotPassword = async (payload) => {
-    return await apiFetch('/auth/admin-forgot-password', {
+    return await apiFetch('/api/auth/admin-forgot-password', {
         method: 'POST',
         body: JSON.stringify(payload),
         isPublic: true,
@@ -206,15 +206,15 @@ export const adminForgotPassword = async (payload) => {
 };
 
 
-export const checkSetupStatus = () => apiFetch('/auth/setup-status', {
+export const checkSetupStatus = () => apiFetch('/api/auth/setup-status', {
     method: 'GET',
     isPublic: true,
 });
 
 // Content Service
-export const getHomePageContent = () => apiFetch('/content/home');
+export const getHomePageContent = () => apiFetch('/api/content/home');
 
-export const updateHomePageContent = (contentData) => apiFetch('/admin/content/home', {
+export const updateHomePageContent = (contentData) => apiFetch('/api/admin/content/home', {
     method: 'PUT',
     body: JSON.stringify(contentData),
 });
@@ -229,9 +229,9 @@ export const submitQuiz = (quizResult) => apiFetch('/api/quizzes/submit', {
 });
 
 // Score Service
-export const getScoreHistory = () => apiFetch('/scores/history');
-export const getScoreDetail = (quizId) => apiFetch(`/scores/history/${quizId}`);
-export const getAllScores = () => apiFetch('/admin/scores');
+export const getScoreHistory = () => apiFetch('/api/scores/history');
+export const getScoreDetail = (quizId) => apiFetch(`/api/scores/history/${quizId}`);
+export const getAllScores = () => apiFetch('/api/admin/scores');
 // CRITICAL FIX: The leaderboard is for all users. Point to the public-facing endpoint in ScoreController.
 // This was incorrectly pointing to an admin-only endpoint, causing access denied errors for regular users.
 export const getLeaderboard = () => apiFetch('/api/scores/leaderboard');
@@ -241,8 +241,8 @@ export const getMyPerformance = () => apiFetch('/api/scores/my-performance'); //
 // Image Upload Service
 export const uploadImage = (file) => {
     const formData = new FormData();
-    formData.append('image', file);
-    return apiFetch('/upload/image', { method: 'POST', body: formData });
+    formData.append('image', file); // This should probably be /api/upload/image
+    return apiFetch('/api/upload/image', { method: 'POST', body: formData });
 };
 
 
@@ -252,9 +252,9 @@ export const getDashboardStats = () => apiFetch('/api/admin/dashboard/stats');
 // --- Admin Management Service ---
 // Note: These endpoints need to be created in your backend.
 
-export const getUsers = () => apiFetch('/api/admin/users');
+export const getUsers = () => apiFetch('/api/admin/users'); // This one is correct
 
-export const createAdmin = (adminData) => apiFetch('/admin/admins', {
+export const createAdmin = (adminData) => apiFetch('/api/admin/admins', {
     method: 'POST',
     body: JSON.stringify(adminData),
 });
@@ -262,7 +262,7 @@ export const createAdmin = (adminData) => apiFetch('/admin/admins', {
 export const getAdmins = () => apiFetch('/api/admin/admins');
 
 
-export const createUser = (userData) => apiFetch('/admin/users', {
+export const createUser = (userData) => apiFetch('/api/admin/users', {
     method: 'POST',
     body: JSON.stringify(userData),
 });
@@ -271,16 +271,16 @@ export const deleteAdmin = (adminId) => apiFetch(`/api/admin/admins/${adminId}`,
     method: 'DELETE',
 });
 
-export const deleteUser = (userId) => apiFetch(`/api/admin/users/${userId}`, {
+export const deleteUser = (userId) => apiFetch(`/api/admin/users/${userId}`, { // This one is correct
     method: 'DELETE',
 });
 
-export const updateUser = (userId, userData) => apiFetch(`/api/admin/users/${userId}`, {
+export const updateUser = (userId, userData) => apiFetch(`/api/admin/users/${userId}`, { // This one is correct
     method: 'PUT',
     body: JSON.stringify(userData),
 });
 
-export const resetUserPassword = (userId) => apiFetch(`/api/admin/users/${userId}/reset-password`, {
+export const resetUserPassword = (userId) => apiFetch(`/api/admin/users/${userId}/reset-password`, { // This one is correct
     method: 'POST',
 });
 
@@ -307,18 +307,18 @@ export const getPerformanceForUser = (userId) => {
 
 
 
-export const updateQuestion = (questionId, questionData) => apiFetch(`/api/admin/questions/${questionId}`, {
+export const updateQuestion = (questionId, questionData) => apiFetch(`/api/admin/questions/${questionId}`, { // This one is correct
     method: 'PUT',
     body: JSON.stringify(questionData),
 });
 
-export const deleteQuestion = (questionId) => apiFetch(`/api/admin/questions/${questionId}`, {
+export const deleteQuestion = (questionId) => apiFetch(`/api/admin/questions/${questionId}`, { // This one is correct
     method: 'DELETE',
 });
 
 export const publishQuestion = (questionId, payload) => {
     if (questionId === 'bulk') {
-        return apiFetch(`/admin/questions/bulk/publish`, {
+        return apiFetch(`/api/admin/questions/bulk/publish`, {
             method: 'POST',
             body: JSON.stringify(payload),
         }); // This was missing /api/
