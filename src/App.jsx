@@ -7,17 +7,17 @@ import UserLayout from './UserLayout.jsx';
 
 // General Components
 import RootRedirect from './components/RootRedirect.jsx';
-import NotFound from "./pages/NotFound.jsx";
+import NotFound from "./pages/NotFound.jsx"; // Assuming the folder is lowercase 'pages'
 
 // Admin Pages
-import AdminSetup from './pages/Adminpage/AdminSetup.jsx';
-import AdminDashboard from './pages/AdminPage/AdminDashboard.jsx';
-import AdminLogin from './pages/AdminPage/AdminLogin.jsx';
+import AdminSetup from './pages/adminpage/AdminSetup.jsx';
+import AdminDashboard from './pages/adminpage/AdminDashboard.jsx';
+import AdminLogin from './pages/adminpage/AdminLogin.jsx';
 
 // User Pages
-import UserLogin from './pages/UserPage/UserLogin.jsx';
-import UserDashboard from './pages/UserPage/UserDashboard.jsx';
-import UserRegister from './pages/UserPage/UserRegistration.jsx';
+import UserLogin from './pages/userpage/UserLogin.jsx';
+import UserDashboard from './pages/userpage/UserDashboard.jsx';
+import UserRegister from './pages/userpage/UserRegistration.jsx';
 
 function App() {
     return (
