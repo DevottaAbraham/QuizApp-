@@ -221,8 +221,9 @@ export const updateHomePageContent = (contentData) => apiFetch('/admin/content/h
 
 
 // Quiz Service
-export const getActiveQuiz = () => apiFetch('/quizzes/active'); // This was pointing to /admin/quizzes/active
-export const submitQuiz = (quizResult) => apiFetch('/quizzes/submit', {
+// This was pointing to /admin/quizzes/active
+export const getActiveQuiz = () => apiFetch('/api/quizzes/active');
+export const submitQuiz = (quizResult) => apiFetch('/api/quizzes/submit', {
     method: 'POST',
     body: JSON.stringify(quizResult),
 });
@@ -233,9 +234,9 @@ export const getScoreDetail = (quizId) => apiFetch(`/scores/history/${quizId}`);
 export const getAllScores = () => apiFetch('/admin/scores');
 // CRITICAL FIX: The leaderboard is for all users. Point to the public-facing endpoint in ScoreController.
 // This was incorrectly pointing to an admin-only endpoint, causing access denied errors for regular users.
-export const getLeaderboard = () => apiFetch('/scores/leaderboard');
-export const getMonthlyPerformance = () => apiFetch('/admin/scores/monthly-performance');
-export const getMyPerformance = () => apiFetch('/scores/my-performance'); // For the logged-in user's own performance
+export const getLeaderboard = () => apiFetch('/api/scores/leaderboard');
+export const getMonthlyPerformance = () => apiFetch('/api/admin/scores/monthly-performance');
+export const getMyPerformance = () => apiFetch('/api/scores/my-performance'); // For the logged-in user's own performance
 
 // Image Upload Service
 export const uploadImage = (file) => {
@@ -246,19 +247,19 @@ export const uploadImage = (file) => {
 
 
 // --- Admin Dashboard Service ---
-export const getDashboardStats = () => apiFetch('/admin/dashboard/stats');
+export const getDashboardStats = () => apiFetch('/api/admin/dashboard/stats');
 
 // --- Admin Management Service ---
 // Note: These endpoints need to be created in your backend.
 
-export const getUsers = () => apiFetch('/admin/users');
+export const getUsers = () => apiFetch('/api/admin/users');
 
 export const createAdmin = (adminData) => apiFetch('/admin/admins', {
     method: 'POST',
     body: JSON.stringify(adminData),
 });
 
-export const getAdmins = () => apiFetch('/admin/admins');
+export const getAdmins = () => apiFetch('/api/admin/admins');
 
 
 export const createUser = (userData) => apiFetch('/admin/users', {
@@ -266,24 +267,24 @@ export const createUser = (userData) => apiFetch('/admin/users', {
     body: JSON.stringify(userData),
 });
 
-export const deleteAdmin = (adminId) => apiFetch(`/admin/admins/${adminId}`, {
+export const deleteAdmin = (adminId) => apiFetch(`/api/admin/admins/${adminId}`, {
     method: 'DELETE',
 });
 
-export const deleteUser = (userId) => apiFetch(`/admin/users/${userId}`, {
+export const deleteUser = (userId) => apiFetch(`/api/admin/users/${userId}`, {
     method: 'DELETE',
 });
 
-export const updateUser = (userId, userData) => apiFetch(`/admin/users/${userId}`, {
+export const updateUser = (userId, userData) => apiFetch(`/api/admin/users/${userId}`, {
     method: 'PUT',
     body: JSON.stringify(userData),
 });
 
-export const resetUserPassword = (userId) => apiFetch(`/admin/users/${userId}/reset-password`, {
+export const resetUserPassword = (userId) => apiFetch(`/api/admin/users/${userId}/reset-password`, {
     method: 'POST',
 });
 
-export const forceChangePassword = (payload) => apiFetch('/auth/force-change-password', {
+export const forceChangePassword = (payload) => apiFetch('/api/auth/force-change-password', {
     method: 'POST',
     body: JSON.stringify(payload),
 });
@@ -291,27 +292,27 @@ export const forceChangePassword = (payload) => apiFetch('/auth/force-change-pas
 // CRITICAL FIX: Ensure userId is explicitly passed and checked to prevent "undefined" string issues.
 // If userId is null/undefined, these functions should ideally not be called, or handle it gracefully.
 // By explicitly checking and passing a valid ID, we prevent the "undefined" string from reaching the backend.
-export const getUserById = (userId) => {
+export const getUserById = (userId) => { // This was missing /api/
     if (!userId) throw new Error("User ID is required for getUserById.");
-    return apiFetch(`/admin/users/${userId}`);
+    return apiFetch(`/api/admin/users/${userId}`);
 };
 export const getScoresForUser = (userId) => {
     if (!userId) throw new Error("User ID is required for getScoresForUser.");
-    return apiFetch(`/admin/users/${userId}/scores`);
+    return apiFetch(`/api/admin/users/${userId}/scores`);
 };
 export const getPerformanceForUser = (userId) => {
     if (!userId) throw new Error("User ID is required for getPerformanceForUser.");
-    return apiFetch(`/admin/users/${userId}/performance`);
+    return apiFetch(`/api/admin/users/${userId}/performance`);
 };
 
 
 
-export const updateQuestion = (questionId, questionData) => apiFetch(`/admin/questions/${questionId}`, {
+export const updateQuestion = (questionId, questionData) => apiFetch(`/api/admin/questions/${questionId}`, {
     method: 'PUT',
     body: JSON.stringify(questionData),
 });
 
-export const deleteQuestion = (questionId) => apiFetch(`/admin/questions/${questionId}`, {
+export const deleteQuestion = (questionId) => apiFetch(`/api/admin/questions/${questionId}`, {
     method: 'DELETE',
 });
 
@@ -320,11 +321,11 @@ export const publishQuestion = (questionId, payload) => {
         return apiFetch(`/admin/questions/bulk/publish`, {
             method: 'POST',
             body: JSON.stringify(payload),
-        });
+        }); // This was missing /api/
     }
-    return apiFetch(`/admin/questions/${questionId}/publish`, { method: 'POST', body: JSON.stringify(payload) });
+    return apiFetch(`/api/admin/questions/${questionId}/publish`, { method: 'POST', body: JSON.stringify(payload) });
 };
 
-export const deleteAllPublishedQuestions = () => apiFetch('/admin/questions/published', {
+export const deleteAllPublishedQuestions = () => apiFetch('/api/admin/questions/published', {
     method: 'DELETE',
 });
