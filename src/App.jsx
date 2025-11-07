@@ -7,7 +7,7 @@ import UserLayout from './UserLayout';
 
 // General Components
 import RootRedirect from './components/RootRedirect';
-import NotFound from './pages/NotFound';
+import NotFound from './pages/Error/NotFound';
 
 // Admin Pages
 import AdminSetup from './pages/AdminSetup';
