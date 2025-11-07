@@ -8,11 +8,10 @@ import UserLayout from './UserLayout.jsx';
 // General Components
 import RootRedirect from './components/RootRedirect.jsx';
 import NotFound from "./Pages/NotFound.jsx";
-
 // Admin Pages
 import AdminSetup from './Pages/AdminPage/AdminSetup.jsx';
-import AdminDashboard from './pages/AdminPage/AdminDashboard.jsx';
-import AdminLogin from './pages/AdminPage/AdminLogin.jsx';
+import AdminDashboard from './Pages/AdminPage/AdminDashboard.jsx';
+import AdminLogin from './Pages/AdminPage/AdminLogin.jsx';
 
 // User Pages
 import UserLogin from './Pages/UserPage/UserLogin.jsx';
@@ -27,6 +26,7 @@ function App() {
 
             {/* User-facing routes */}
             <Route path="/user" element={<UserLayout />}>
+                <Route index element={<UserLogin />} />
                 <Route path="login" element={<UserLogin />} />
                 <Route path="register" element={<UserRegister />} />
                 <Route path="dashboard" element={<UserDashboard />} />
@@ -35,6 +35,7 @@ function App() {
 
             {/* Admin routes */}
             <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminLogin />} />
                 <Route path="setup" element={<AdminSetup />} />
                 <Route path="login" element={<AdminLogin />} />
                 <Route path="dashboard" element={<AdminDashboard />} />
