@@ -1,6 +1,5 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import 'react-toastify/dist/ReactToastify.css';
 
 // Layouts
 import AdminLayout from './AdminLayout.jsx';
@@ -8,17 +7,17 @@ import UserLayout from './UserLayout.jsx';
 
 // General Components
 import RootRedirect from './components/RootRedirect.jsx';
-import NotFound from './pages/NotFound.jsx';
+import NotFound from './pages/NotFound.jsx'; // This path is correct
 
 // Admin Pages
-import AdminSetup from './pages/AdminPage/AdminSetup.jsx';
-import AdminDashboard from './pages/AdminPage/Dashboard.jsx';
-import AdminLogin from './pages/AdminPage/AdminLogin.jsx';
+import AdminSetup from './pages/AdminSetup.jsx';
+import AdminDashboard from './pages/AdminDashboard.jsx';
+import AdminLogin from './pages/AdminLogin.jsx';
 
 // User Pages
-import UserLogin from './pages/UserPage/UserLogin.jsx';
-import UserDashboard from './pages/UserPage/UserDashboard.jsx';
-import UserRegister from './pages/UserPage/UserRegistration.jsx';
+import UserLogin from './pages/UserLogin.jsx';
+import UserDashboard from './pages/UserDashboard.jsx';
+import UserRegister from './pages/UserRegister.jsx';
 
 function App() {
     return (
