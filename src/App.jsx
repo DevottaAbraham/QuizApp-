@@ -3,22 +3,22 @@ import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 
 // Layouts
-import AdminLayout from '@/AdminLayout.jsx';
-import UserLayout from '@/UserLayout.jsx';
+import AdminLayout from '@/AdminLayout';
+import UserLayout from '@/UserLayout';
 
 // General Components
-import RootRedirect from '@/components/RootRedirect.jsx';
-import NotFound from '@/pages/NotFound.jsx';
+import RootRedirect from '@/components/RootRedirect';
+import NotFound from '@/pages/NotFound';
 
 // Admin Pages
-import AdminSetup from '@/pages/AdminSetup.jsx';
-import AdminDashboard from '@/pages/AdminDashboard.jsx';
-import AdminLogin from '@/pages/AdminLogin.jsx';
+import AdminSetup from '@/pages/AdminSetup';
+import AdminDashboard from '@/pages/AdminDashboard';
+import AdminLogin from '@/pages/AdminLogin';
 
 // User Pages
-import UserLogin from '@/pages/UserLogin.jsx';
-import UserDashboard from '@/pages/UserDashboard.jsx';
-import UserRegister from '@/pages/UserRegister.jsx';
+import UserLogin from '@/pages/UserLogin';
+import UserDashboard from '@/pages/UserDashboard';
+import UserRegister from '@/pages/UserRegister';
 
 function App() {
     return (
