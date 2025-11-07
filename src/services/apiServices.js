@@ -182,7 +182,7 @@ export const logout = async () => {
 
 export const registerAdmin = async (username, password) => {
     // This endpoint is specifically for the initial admin setup.
-    return await apiFetch('/auth/register-admin', {
+    return await apiFetch('/auth/setup', {
         method: 'POST',
         body: JSON.stringify({ username, password }),
         isPublic: true, // The endpoint is public, but protected by backend logic.
