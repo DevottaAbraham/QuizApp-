@@ -1,5 +1,5 @@
 import * as api from './apiServices';
-import { toast } from 'react-toastify';
+import alertService from './alertService';
 import { vi } from 'vitest';
 
 describe('apiService', () => {
@@ -7,7 +7,7 @@ describe('apiService', () => {
   beforeEach(() => {
     // Instead of resetMocks, we use mockClear for vi mocks
     vi.mocked(fetch).mockClear();
-    vi.mocked(toast.error).mockClear();
+    vi.mocked(alertService.error).mockClear();
   });
 
   describe('apiFetch generic wrapper', () => {
@@ -33,7 +33,7 @@ describe('apiService', () => {
         json: async () => null,
       });
 
-      const data = await api.dismissNotice('notice-123');
+      const data = await api.deleteUser('user-123');
 
       expect(fetch).toHaveBeenCalledTimes(1);
       expect(data).toBeNull();
@@ -44,9 +44,9 @@ describe('apiService', () => {
       vi.mocked(fetch).mockRejectedValue(new Error(errorMessage));
 
       // We expect this function to throw an error
-      await expect(api.getNotices()).rejects.toThrow(errorMessage);
+      await expect(api.getUsers()).rejects.toThrow(errorMessage);
 
-      expect(toast.error).toHaveBeenCalledWith('A network error occurred. Please try again.');
+      expect(alertService.error).toHaveBeenCalledWith('Error', 'A network error occurred.');
     });
 
     it('should handle non-ok responses (e.g., 404, 500) and throw an error', async () => {
@@ -59,7 +59,7 @@ describe('apiService', () => {
 
       await expect(api.getScoreDetail('non-existent-id')).rejects.toThrow('Not Found');
 
-      expect(toast.error).toHaveBeenCalledWith('Not Found');
+      expect(alertService.error).toHaveBeenCalledWith('API Error', 'Not Found');
     });
   });
 

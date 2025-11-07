@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card, Table, Spinner, Alert, Breadcrumb } from 'react-bootstrap';
-import { toast } from 'react-toastify';
-// import * as api from '../../services/apiServices';
+import alertService from '../services/alertService';
+import * as api from '../services/apiServices';
 
 const UserScoreDetails = () => {
     const { userId } = useParams();
@@ -21,7 +21,7 @@ const UserScoreDetails = () => {
             setScores(scoresData);
         } catch (err) {
             setError('Failed to load user score details. The user may not exist.');
-            toast.error('Failed to load user score details.');
+            alertService.error('Error', 'Failed to load user score details.');
         } finally {
             setLoading(false);
         }

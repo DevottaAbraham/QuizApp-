@@ -43,7 +43,11 @@ function RootRedirect() {
     // If setup is NOT complete, the only available page should be the admin setup.
     if (isSetupComplete) {
         // If setup is done, go to the main user login page.
-        return <Navigate to="/user/login" replace />;
+        if (user) {
+            // If a user is already logged in, redirect to their dashboard
+            return <Navigate to="/user/dashboard" replace />;
+        }
+        return <Navigate to="/user/login" replace />; // Otherwise, go to login
     } else {
         // If setup is NOT done, the only place to go is the admin setup page.
         return <Navigate to="/admin/setup" replace />;

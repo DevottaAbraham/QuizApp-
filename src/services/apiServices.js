@@ -1,6 +1,6 @@
 
-import { toast } from 'react-toastify';
 import { createBrowserHistory } from 'history';
+import alertService from './alertService';
  
 // Create a history object to allow navigation from outside React components
 export const history = createBrowserHistory();
@@ -96,7 +96,7 @@ export const apiFetch = async (endpoint, options = {}) => {
             // CRITICAL FIX: Do not show an error toast for the initial, expected 401 on /api/auth/me.
             // This is a normal part of the authentication flow, not a user-facing error.
             if (!(response.status === 401 && endpoint === '/auth/me')) {
-                toast.error(errorMessage);
+                alertService.error('API Error', errorMessage);
             }
             throw new Error(errorMessage);
         }
@@ -106,9 +106,9 @@ export const apiFetch = async (endpoint, options = {}) => {
         // Handle network errors and other exceptions
         if (error.name !== 'AbortError' && !error.message.startsWith('HTTP error')) {
             if (error instanceof TypeError && error.message === 'Failed to fetch') {
-                toast.error('Cannot connect to server. Is it running?');
+                alertService.error('Network Error', 'Cannot connect to server. Is it running?');
             } else if (!error.message.includes("Session expired")) {
-                toast.error(error.message || 'A network error occurred.');
+                alertService.error('Error', error.message || 'A network error occurred.');
             }
         }
         throw error;
