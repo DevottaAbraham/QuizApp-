@@ -7,7 +7,7 @@ import UserLayout from './UserLayout.jsx';
 
 // General Components
 import RootRedirect from './components/RootRedirect.jsx';
-import NotFound from './pages/NotFound.jsx';
+import NotFound from "./pages/NotFound.jsx";
 
 // Admin Pages
 import AdminSetup from './pages/Adminpage/AdminSetup.jsx';
