@@ -1,69 +1,69 @@
 import React, { useState } from 'react';
-import { Card, Form, Button, Container, Row, Col, Alert } from 'react-bootstrap';
-import { useNavigate, Link } from 'react-router-dom';
-import { toast } from 'react-toastify';
-import { apiFetch } from '../../services/apiServices';
+import { Form, Button, Card, Container, Row, Col, Alert, Spinner } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext'; // Adjust path as needed
+import alertService from '../../services/alertService'; // Adjust path as needed
 
-const UserRegistration = () => {
+const UserRegister = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const { register } = useAuth();
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
+        setError('');
+
         if (password !== confirmPassword) {
-            toast.error("Passwords do not match!");
+            setError('Passwords do not match.');
+            alertService.error('Password Mismatch', 'The entered passwords do not match.');
+            setLoading(false);
             return;
         }
 
         try {
-            // CRITICAL FIX: This was incorrectly calling the admin registration endpoint.
-            // It now correctly calls the general /auth/register endpoint, which will
-            // assign the 'USER' role by default since an admin already exists.
-            const response = await apiFetch('/auth/register', {
-                method: 'POST',
-                body: JSON.stringify({ username, password }),
-                isPublic: true,
-            });
-
-            toast.success(response.message || "Account created successfully! Please log in.");
-            navigate('/user/login'); // Redirect to login page after successful registration
-
-        } catch (error) {
-            // The apiFetch service already shows a toast error for most cases.
-            console.error("Registration failed:", error);
+            await register(username, password);
+            alertService.success('Registration Successful', 'You have been registered successfully! Please log in.');
+            navigate('/user/login'); // Redirect to user login page
+        } catch (err) {
+            // apiService already handles showing the error toast
+            setError(err.message || 'Failed to register. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: '80vh' }}>
-            <Row className="w-100 justify-content-center">
-                <Col md="auto">
-                    <Card style={{ width: '24rem' }} className="shadow-lg">
-                        <Card.Header as="h5" className="text-center bg-primary text-white">Create Your Account</Card.Header>
+        <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: '100vh' }}>
+            <Row className="w-100">
+                <Col md={6} lg={5} xl={4} className="mx-auto">
+                    <Card className="shadow-lg">
                         <Card.Body className="p-4">
+                            <h3 className="text-center mb-4">User Registration</h3>
+                            {error && <Alert variant="danger">{error}</Alert>}
                             <Form onSubmit={handleSubmit}>
                                 <Form.Group className="mb-3" controlId="username">
                                     <Form.Label>Username</Form.Label>
-                                    <Form.Control type="text" placeholder="Choose a username" value={username} onChange={(e) => setUsername(e.target.value)} required />
+                                    <Form.Control type="text" value={username} onChange={(e) => setUsername(e.target.value)} required />
                                 </Form.Group>
-
                                 <Form.Group className="mb-3" controlId="password">
                                     <Form.Label>Password</Form.Label>
-                                    <Form.Control type="password" placeholder="Create a password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                                    <Form.Control type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                                 </Form.Group>
-
-                                <Form.Group className="mb-4" controlId="confirmPassword">
+                                <Form.Group className="mb-3" controlId="confirmPassword">
                                     <Form.Label>Confirm Password</Form.Label>
-                                    <Form.Control type="password" placeholder="Confirm your password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+                                    <Form.Control type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
                                 </Form.Group>
-
-                                <Button variant="primary" type="submit" className="w-100">Register</Button>
+                                <div className="d-grid">
+                                    <Button variant="primary" type="submit" disabled={loading}>
+                                        {loading ? <Spinner animation="border" size="sm" /> : 'Register'}
+                                    </Button>
+                                </div>
                             </Form>
-                            <div className="text-center mt-3">
-                                <Link to="/user/login">Already have an account? Login</Link>
-                            </div>
                         </Card.Body>
                     </Card>
                 </Col>
@@ -72,4 +72,5 @@ const UserRegistration = () => {
     );
 };
 
-export default UserRegistration;
+export default UserRegister;
+
