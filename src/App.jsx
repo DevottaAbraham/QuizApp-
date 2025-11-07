@@ -1,23 +1,24 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Layouts
-import AdminLayout from './AdminLayout';
-import UserLayout from './UserLayout';
+import AdminLayout from './AdminLayout.jsx';
+import UserLayout from './UserLayout.jsx';
 
 // General Components
-import RootRedirect from './components/RootRedirect';
-import NotFound from './pages/Error/NotFound';
+import RootRedirect from './components/RootRedirect.jsx';
+import NotFound from './pages/NotFound.jsx';
 
 // Admin Pages
-import AdminSetup from './pages/AdminSetup';
-import AdminDashboard from './pages/AdminDashboard';
-import AdminLogin from './pages/AdminLogin';
+import AdminSetup from './pages/AdminPage/AdminSetup.jsx';
+import AdminDashboard from './pages/AdminPage/Dashboard.jsx';
+import AdminLogin from './pages/AdminPage/AdminLogin.jsx';
 
 // User Pages
-import UserLogin from './pages/UserLogin';
-import UserDashboard from './pages/UserDashboard';
-import UserRegister from './pages/UserRegister';
+import UserLogin from './pages/UserPage/UserLogin.jsx';
+import UserDashboard from './pages/UserPage/UserDashboard.jsx';
+import UserRegister from './pages/UserPage/UserRegistration.jsx';
 
 function App() {
     return (
