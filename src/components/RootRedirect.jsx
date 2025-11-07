@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { Spinner } from 'react-bootstrap';
-import { checkSetupStatus } from '../services/apiServices'; // Correctly imported
+import { checkSetupStatus } from '../services/apiServices';
 import { useAuth } from '../contexts/AuthContext';
 
 function RootRedirect() {

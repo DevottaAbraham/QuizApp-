@@ -4,7 +4,7 @@ import { vi } from 'vitest';
 global.fetch = vi.fn();
 
 // Mock the alertService to prevent actual alerts during tests
-vi.mock('./services/alertService', () => ({
+vi.mock('./alertService', () => ({
   default: {
     success: vi.fn(),
     error: vi.fn(),
