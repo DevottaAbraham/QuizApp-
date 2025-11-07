@@ -10,14 +10,14 @@ import RootRedirect from './components/RootRedirect.jsx';
 import NotFound from './pages/NotFound.jsx'; // This path is correct
 
 // Admin Pages
-import AdminSetup from './pages/AdminSetup.jsx';
-import AdminDashboard from './pages/AdminDashboard.jsx';
-import AdminLogin from './pages/AdminLogin.jsx';
+import AdminSetup from './pages/AdminPage/Setup.jsx';
+import AdminDashboard from './pages/AdminPage/AdminDashboard.jsx';
+import AdminLogin from './pages/AdminPage/AdminLogin.jsx';
 
 // User Pages
-import UserLogin from './pages/UserLogin.jsx';
-import UserDashboard from './pages/UserDashboard.jsx';
-import UserRegister from './pages/UserRegister.jsx';
+import UserLogin from './pages/UserPage/UserLogin.jsx';
+import UserDashboard from './pages/UserPage/UserDashboard.jsx';
+import UserRegister from './pages/UserPage/UserRegister.jsx';
 
 function App() {
     return (
