@@ -16,7 +16,7 @@ import AdminLogin from './Pages/AdminPage/AdminLogin.jsx';
 // User Pages
 import UserLogin from './Pages/UserPage/UserLogin.jsx';
 import UserDashboard from './Pages/UserPage/UserDashboard.jsx';
-import UserRegister from './pages/UserPage/UserRegistration.jsx';
+import UserRegister from './Pages/UserPage/UserRegistration.jsx';
 
 function App() {
     return (
