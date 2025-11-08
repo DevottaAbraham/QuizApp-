@@ -55,7 +55,7 @@ export const apiFetch = async (endpoint, options = {}) => {
             if (!isRefreshing) {
                 isRefreshing = true;
                 // CRITICAL FIX: The refresh call itself is a public endpoint and should not trigger another refresh.
-                refreshPromise = apiFetch('/auth/refresh', { method: 'POST', isPublic: true })
+                refreshPromise = apiFetch('/api/auth/refresh', { method: 'POST', isPublic: true })
                     .then(refreshResponse => {
                         if (!refreshResponse.ok) {
                             // If refresh fails, the session is truly over.
@@ -95,7 +95,7 @@ export const apiFetch = async (endpoint, options = {}) => {
             
             // CRITICAL FIX: Do not show an error toast for the initial, expected 401 on /api/auth/me.
             // This is a normal part of the authentication flow, not a user-facing error.
-            if (!(response.status === 401 && endpoint === '/auth/me')) {
+            if (!(response.status === 401 && (endpoint === '/api/auth/me' || endpoint === '/auth/me'))) {
                 alertService.error('API Error', errorMessage);
             }
             throw new Error(errorMessage);
