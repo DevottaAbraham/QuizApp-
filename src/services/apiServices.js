@@ -206,8 +206,10 @@ export const adminForgotPassword = async (payload) => {
 };
 
 
+// CRITICAL FIX: This was incorrectly using a GET request to a non-existent endpoint.
+// It must be a POST request to /api/auth/setup to match the AuthController.
 export const checkSetupStatus = () => apiFetch('/api/auth/setup-status', {
-    method: 'GET',
+    method: 'POST', // Changed from GET to POST
     isPublic: true,
 });
 
