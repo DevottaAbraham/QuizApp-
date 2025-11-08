@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 
 // Layouts
 import AdminLayout from './AdminLayout.jsx';
@@ -24,22 +24,26 @@ function App() {
             {/* Root path redirects based on setup and auth status */}
             <Route path="/" element={<RootRedirect />} />
 
+            {/* Add top-level redirects for convenience */}
+            <Route path="/login" element={<Navigate to="/user/login" replace />} />
+            <Route path="/register" element={<Navigate to="/user/register" replace />} />
+
             {/* User-facing routes */}
             <Route path="/user" element={<UserLayout />}>
-                <Route index element={<UserLogin />} />
+                {/* Default to login page if no other user route is matched */}
+                <Route index element={<Navigate to="/user/login" replace />} />
                 <Route path="login" element={<UserLogin />} />
                 <Route path="register" element={<UserRegister />} />
                 <Route path="dashboard" element={<UserDashboard />} />
-                {/* Add other user routes here */}
             </Route>
 
             {/* Admin routes */}
             <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminLogin />} />
+                {/* Default to login page if no other admin route is matched */}
+                <Route index element={<Navigate to="/admin/login" replace />} />
                 <Route path="setup" element={<AdminSetup />} />
                 <Route path="login" element={<AdminLogin />} />
                 <Route path="dashboard" element={<AdminDashboard />} />
-                {/* Add other admin routes here */}
             </Route>
 
             {/* Fallback for any other route */}
