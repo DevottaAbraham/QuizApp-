@@ -182,7 +182,9 @@ export const logout = async () => {
 
 export const registerAdmin = async (username, password) => {
     // This endpoint is specifically for the initial admin setup.
-    return await apiFetch('/api/auth/setup', {
+    // CRITICAL FIX: The backend expects this request at '/api/auth/register-admin'.
+    // The previous endpoint '/api/auth/setup' was incorrect and caused a 404 error.
+    return await apiFetch('/api/auth/register-admin', {
         method: 'POST',
         body: JSON.stringify({ username, password }),
         isPublic: true, // The endpoint is public, but protected by backend logic.
