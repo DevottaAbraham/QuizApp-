@@ -22,7 +22,10 @@ describe('apiService', () => {
       const data = await api.getHomePageContent();
 
       expect(fetch).toHaveBeenCalledTimes(1);
-      expect(fetch).toHaveBeenCalledWith('http://localhost:8081/api/content/home', expect.any(Object));
+      // CRITICAL FIX: Do not test against a hardcoded absolute URL.
+      // Instead, verify that fetch is called with a URL that ENDS WITH the correct endpoint.
+      // This makes the test environment-agnostic.
+      expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/api\/content\/home$/), expect.any(Object));
       expect(data).toEqual(mockData);
     });
 
@@ -74,7 +77,7 @@ describe('apiService', () => {
       const result = await api.login('test', 'password');
 
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8081/api/auth/login',
+        expect.stringMatching(/\/api\/auth\/login$/),
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ username: 'test', password: 'password' }),
@@ -125,7 +128,7 @@ describe('apiService', () => {
       await api.submitQuiz(quizResult);
 
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8081/api/quizzes/submit',
+        expect.stringMatching(/\/api\/quizzes\/submit$/),
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify(quizResult),
