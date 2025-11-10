@@ -6,5 +6,5 @@ import { apiFetch } from './apiServices';
  * @returns {Promise<Object>} A promise that resolves with the home page content.
  */
 export const getHomePageContent = async () => {
-    return apiFetch('/content/home');
+    return apiFetch('/api/content/home');
 };
