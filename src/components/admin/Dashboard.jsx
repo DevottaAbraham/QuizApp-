@@ -1,34 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Col, Row, InputGroup, Button, Form, Spinner, Alert } from 'react-bootstrap';
+import React from 'react';
+import { Card, Col, Row, InputGroup, Button, Form, Spinner } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { getDashboardStats } from '../../services/apiServices';
-import { useAuth } from '../../contexts/AuthContext';
 
-const Dashboard = () => {
-    const { currentUser } = useAuth();
-    const [stats, setStats] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-
-    useEffect(() => {
-        if (currentUser) {
-            const fetchStats = async () => {
-                try {
-                    setLoading(true);
-                    const data = await getDashboardStats();
-                    setStats(data);
-                } catch (err) {
-                    setError('Failed to load dashboard statistics.');
-                    // The apiService will also show a toast.
-                } finally {
-                    setLoading(false);
-                }
-            };
-            fetchStats();
-        }
-    }, [currentUser]);
-
+/**
+ * A presentational component that displays dashboard statistics and the user quiz link.
+ * It receives all data and handlers as props.
+ * @param {object} props
+ * @param {boolean} props.isLoading - Whether the data is currently loading.
+ * @param {object} props.stats - The dashboard statistics object.
+ * @param {string} props.userQuizLink - The URL for the user quiz.
+ * @param {function} props.onCopyLink - The function to call when the copy link button is clicked.
+ */
+const Dashboard = ({ isLoading, stats, userQuizLink, onCopyLink }) => {
     const userQuizLink = `${window.location.origin}/user/login`;
 
     const handleCopyLink = () => {
@@ -37,18 +21,13 @@ const Dashboard = () => {
         });
     };
 
-    if (loading) {
+    if (isLoading) {
         return (
             <div className="text-center p-5">
                 <Spinner animation="border" role="status"><span className="visually-hidden">Loading...</span></Spinner>
             </div>
         );
     }
-
-    if (error) {
-        return <Alert variant="danger">{error}</Alert>;
-    }
-
     return (
         <div>
             <h2 className="mb-4">Admin Dashboard</h2>
@@ -62,8 +41,8 @@ const Dashboard = () => {
                             <Card.Body>
                                 <p>Share this permanent link with users to log in and access the quiz. It is now active because you have published questions.</p>
                                 <InputGroup>
-                                    <Form.Control readOnly value={userQuizLink} />
-                                    <Button variant="primary" onClick={handleCopyLink}><i className="bi bi-clipboard-check-fill me-1"></i> Copy Link</Button>
+                                    <Form.Control readOnly value={userQuizLink} onCopy={onCopyLink} />
+                                    <Button variant="primary" onClick={onCopyLink}><i className="bi bi-clipboard-check-fill me-1"></i> Copy Link</Button>
                                 </InputGroup>
                             </Card.Body>
                         </Card>
@@ -88,7 +67,7 @@ const Dashboard = () => {
                     <Card className="text-center shadow-sm h-100">
                         <Card.Body>
                             <Card.Title>Total Registered Users</Card.Title>
-                            <Card.Text className="fs-1 fw-bold">{stats?.totalUsers ?? 0}</Card.Text>
+                            <Card.Text className="fs-1 fw-bold">{stats.totalUsers}</Card.Text>
                         </Card.Body>
                     </Card>
                 </Col>
@@ -96,7 +75,7 @@ const Dashboard = () => {
                     <Card className="text-center shadow-sm h-100">
                         <Card.Body>
                             <Card.Title><i className="bi bi-journal-check me-2"></i>Total Questions</Card.Title>
-                            <Card.Text className="fs-1 fw-bold">{stats?.totalQuestions ?? 0}</Card.Text>
+                            <Card.Text className="fs-1 fw-bold">{stats.totalQuestions}</Card.Text>
                         </Card.Body>
                     </Card>
                 </Col>
@@ -104,7 +83,7 @@ const Dashboard = () => {
                     <Card className="text-center shadow-sm h-100">
                         <Card.Body>
                             <Card.Title><i className="bi bi-cloud-check-fill me-2"></i>Published Questions</Card.Title>
-                            <Card.Text className="fs-1 fw-bold">{stats?.publishedQuestions ?? '...'}</Card.Text>
+                            <Card.Text className="fs-1 fw-bold">{stats.publishedQuestions}</Card.Text>
                         </Card.Body>
                     </Card>
                 </Col>
