@@ -7,7 +7,7 @@ export const history = createBrowserHistory();
 
 // Use Vite's standard way of accessing environment variables.
 // CRITICAL FIX: The base URL should NOT include the '/api' suffix.
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://quizapp-backend-nxm7.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://quizapp-backend-nxm7.onrender.com/api';
 
 
 export const setAuthToken = (user) => {
