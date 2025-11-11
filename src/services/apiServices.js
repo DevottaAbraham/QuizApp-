@@ -115,7 +115,7 @@ export const apiFetch = async (endpoint, options = {}) => {
         throw error;
     }
 };
-
+/*
 /**
  * Fetches the current user's data if a token is available.
  * This should be called when the application initializes to restore the session.
@@ -128,7 +128,7 @@ export const getCurrentUser = async () => {
         // If the request fails (e.g., 401), it means no valid session exists.
         return null;
     }
-};
+}
 
 // ... (other functions)
 
